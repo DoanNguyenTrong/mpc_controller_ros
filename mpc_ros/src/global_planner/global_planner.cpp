@@ -69,7 +69,7 @@
 
       // Start point
       //plan.push_back(start);
-      cout << " start: " <<  start.pose.position.x << endl; 
+      cout << "[global_planner::makePlan] start: " <<  start.pose.position.x << endl; 
       
       nav_msgs::Path global_path = nav_msgs::Path();   // For generating mpc reference path  
       geometry_msgs::PoseStamped tempPose;
@@ -151,7 +151,7 @@
             }
         }  
 
-        cout << "global_path.poses.size(): " << global_path.poses.size() << endl;
+        cout << "[global_planner::makePlan] global_path.poses.size(): " << global_path.poses.size() << endl;
         if(global_path.poses.size() >= _pathLength )
         {
             _odom_path = global_path; // Path waypoints in odom frame
@@ -161,7 +161,7 @@
             //_pub_globalpath.publish(global_path);        
         }
         else
-          cout << "Failed to path generation" << endl;
+          cout << "[global_planner::makePlan] Failed to path generation" << endl;
 
       }
       catch(tf::TransformException &ex)
@@ -212,10 +212,10 @@
           const double cte  = polyeval(coeffs, 0.0);
           const double etheta = atan(coeffs[1]);
             
-          cout << "cte: " << cte << endl;
-          cout << "etheta: " << etheta << endl;
-          cout << "linear_vel: " << _linear_vel << endl;
-          cout << "_angular_vel: " << _angular_vel << endl;
+          cout << "[global_planner::CalError] cte         : " << cte << endl;
+          cout << "[global_planner::CalError] etheta      : " << etheta << endl;
+          cout << "[global_planner::CalError] linear_vel  : " << _linear_vel << endl;
+          cout << "[global_planner::CalError] _angular_vel: " << _angular_vel << endl;
               //writefile
           idx++;
           file << idx<< "," << cte << "," <<  etheta << "," << _linear_vel << "," << _angular_vel << ",";
@@ -266,7 +266,7 @@
     void GeonPlanner::goalCB(const geometry_msgs::PoseStamped::ConstPtr& goalMsg)
     {
         _goal_received = true;
-        ROS_INFO("Goal Received :goalCB!");
+        ROS_INFO("[global_planner::goalCB] Goal Received :goalCB!");
     }
     // CallBack: Update goal status
     void GeonPlanner::getCmdCB(const geometry_msgs::Twist& cmdMsg)

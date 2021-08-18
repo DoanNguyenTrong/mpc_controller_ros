@@ -134,16 +134,16 @@ MPCNode::MPCNode()
 
     //Display the parameters
     cout << "\n===== Parameters =====" << endl;
-    cout << "pub_twist_cmd: "  << _pub_twist_flag << endl;
-    cout << "debug_info: "  << _debug_info << endl;
-    cout << "delay_mode: "  << _delay_mode << endl;
+    cout << "[MPC_Node::MPC] pub_twist_cmd : "  << _pub_twist_flag << endl;
+    cout << "[MPC_Node::MPC] debug_info    : "  << _debug_info << endl;
+    cout << "[MPC_Node::MPC] delay_mode    : "  << _delay_mode << endl;
     //cout << "vehicle_Lf: "  << _Lf << endl;
-    cout << "frequency: "   << _dt << endl;
-    cout << "mpc_steps: "   << _mpc_steps << endl;
-    cout << "mpc_ref_vel: " << _ref_vel << endl;
-    cout << "mpc_w_cte: "   << _w_cte << endl;
-    cout << "mpc_w_etheta: "  << _w_etheta << endl;
-    cout << "mpc_max_angvel: "  << _max_angvel << endl;
+    cout << "[MPC_Node::MPC] frequency     : "   << _dt << endl;
+    cout << "[MPC_Node::MPC] mpc_steps     : "   << _mpc_steps << endl;
+    cout << "[MPC_Node::MPC] mpc_ref_vel   : " << _ref_vel << endl;
+    cout << "[MPC_Node::MPC] mpc_w_cte     : "   << _w_cte << endl;
+    cout << "[MPC_Node::MPC] mpc_w_etheta  : "  << _w_etheta << endl;
+    cout << "[MPC_Node::MPC] mpc_max_angvel: "  << _max_angvel << endl;
 
     //Publishers and Subscribers
     _sub_odom   = _nh.subscribe("/odom", 1, &MPCNode::odomCB, this);
@@ -432,7 +432,7 @@ void MPCNode::pathCB(const nav_msgs::Path::ConstPtr& pathMsg)
     
     if(_goal_received && !_goal_reached)
     {    
-        cout << "PathCB condition" << endl;
+        cout << "[MPC_Node::pathCB] PathCB condition" << endl;
         nav_msgs::Path odom_path = nav_msgs::Path();
         try
         {
@@ -476,7 +476,7 @@ void MPCNode::pathCB(const nav_msgs::Path::ConstPtr& pathMsg)
             }
             else
             {
-                cout << "Failed to path generation" << endl;
+                cout << "[MPC_Node::pathCB] Failed to path generation" << endl;
                 _waypointsDist = -1;
             }
             //DEBUG            
@@ -516,7 +516,7 @@ void MPCNode::amclCB(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& a
             _goal_received = false;
             _goal_reached = true;
             _path_computed = false;
-            ROS_INFO("Goal Reached !");
+            ROS_INFO("[MPC_Node::amclCB] Goal Reached !");
         }
     }
 }
@@ -600,15 +600,15 @@ void MPCNode::controlLoopCB(const ros::TimerEvent&)
         if(_debug_info)
         {
             cout << "\n\nDEBUG" << endl;
-            cout << "theta: " << theta << endl;
-            cout << "V: " << v << endl;
+            cout << "[MPC_Node::controlLoopCB] theta    : " << theta << endl;
+            cout << "[MPC_Node::controlLoopCB] v        : " << v << endl;
             //cout << "odom_path: \n" << odom_path << endl;
             //cout << "x_points: \n" << x_veh << endl;
             //cout << "y_points: \n" << y_veh << endl;
-            cout << "coeffs: \n" << coeffs << endl;
-            cout << "_w: \n" << _w << endl;
-            cout << "_throttle: \n" << _throttle << endl;
-            cout << "_speed: \n" << _speed << endl;
+            cout << "[MPC_Node::controlLoopCB] coeffs   : " << coeffs << endl;
+            cout << "[MPC_Node::controlLoopCB] _w       : " << _w << endl;
+            cout << "[MPC_Node::controlLoopCB] _throttle: " << _throttle << endl;
+            cout << "[MPC_Node::controlLoopCB] _speed   : " << _speed << endl;
         }
 
         // Display the MPC predicted trajectory
@@ -634,7 +634,7 @@ void MPCNode::controlLoopCB(const ros::TimerEvent&)
         _speed = 0.0;
         _w = 0;
         if(_goal_reached && _goal_received)
-            cout << "Goal Reached: control loop !" << endl;
+            cout << "[MPC_Node::controlLoopCB] Goal Reached !" << endl;
     }
 
     // publish ankermann cmd_vel
@@ -666,7 +666,7 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "MPC_Node");
     MPCNode mpc_node;
 
-    ROS_INFO("Waiting for global path msgs ~");
+    ROS_INFO("[MPC_Node::main] Waiting for global path msgs ~");
     ros::AsyncSpinner spinner(mpc_node.get_thread_numbers()); // Use multi threads
     spinner.start();
     ros::waitForShutdown();

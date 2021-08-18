@@ -319,7 +319,7 @@ void MPCNode::goalCB(const geometry_msgs::PoseStamped::ConstPtr& goalMsg)
     _goal_pos = goalMsg->pose.position;
     _goal_received = true;
     _goal_reached = false;
-    ROS_INFO("Goal Received :goalCB!");
+    ROS_INFO("[navMPCNode::goalCB] Goal Received :goalCB!");
 }
 
 
@@ -351,8 +351,8 @@ void MPCNode::amclCB(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& a
             _goal_received = false;
             _goal_reached = true;
             _path_computed = false;
-            ROS_INFO("Goal Reached !");
-            cout << "tracking time: " << tracking_time_sec << "." << tracking_time_nsec << endl;
+            ROS_INFO("[navMPCNode::amclCB] Goal Reached !");
+            cout << "[navMPCNode::amclCB] tracking time: " << tracking_time_sec << "." << tracking_time_nsec << endl;
 
         }
     }
@@ -406,9 +406,9 @@ void MPCNode::controlLoopCB(const ros::TimerEvent&)
         // Fit waypoints
         auto coeffs = polyfit(x_veh, y_veh, 3); 
         const double cte  = polyeval(coeffs, 0.0);
-        cout << "coeffs : " << coeffs[0] << endl;
-        cout << "pow : " << pow(0.0 ,0) << endl;
-        cout << "cte : " << cte << endl;
+        cout << "[navMPCNode::controlLoopCB] coeffs : " << coeffs[0] << endl;
+        cout << "[navMPCNode::controlLoopCB] pow    : " << pow(0.0 ,0) << endl;
+        cout << "[navMPCNode::controlLoopCB] cte    : " << cte << endl;
         double etheta = atan(coeffs[1]);
 
         // Global coordinate system about theta
@@ -435,7 +435,7 @@ void MPCNode::controlLoopCB(const ros::TimerEvent&)
         else
             etheta = 0;
 
-        cout << "etheta: "<< etheta << ", atan2(gy,gx): " << atan2(gy,gx) << ", temp_theta:" << traj_deg << endl;
+        cout << "[navMPCNode::controlLoopCB] etheta: "<< etheta << ", atan2(gy,gx): " << atan2(gy,gx) << ", temp_theta:" << traj_deg << endl;
 
 
         
@@ -449,7 +449,7 @@ void MPCNode::controlLoopCB(const ros::TimerEvent&)
         const double y_err = goal_pos.y -  odom.pose.pose.position.y;
         const double goal_err = sqrt(x_err*x_err + y_err*y_err);
 
-        cout << "x_err:"<< x_err << ", y_err:"<< y_err  << endl;
+        cout << "[navMPCNode::controlLoopCB] x_err:"<< x_err << ", y_err:"<< y_err  << endl;
 
         VectorXd state(6);
         if(_delay_mode)
@@ -474,7 +474,7 @@ void MPCNode::controlLoopCB(const ros::TimerEvent&)
         ros::Time begin = ros::Time::now();
         vector<double> mpc_results = _mpc.Solve(state, coeffs);    
         ros::Time end = ros::Time::now();
-        cout << "Duration: " << end.sec << "." << end.nsec << endl << begin.sec<< "."  << begin.nsec << endl;
+        cout << "[navMPCNode::controlLoopCB] Solving time: " << end.sec << "." << end.nsec << endl << begin.sec<< "."  << begin.nsec << endl;
               
         // MPC result (all described in car frame), output = (acceleration, w)        
         _w = mpc_results[0]; // radian/sec, angular velocity
@@ -488,16 +488,15 @@ void MPCNode::controlLoopCB(const ros::TimerEvent&)
 
         if(_debug_info)
         {
-            cout << "\n\nDEBUG" << endl;
-            cout << "theta: " << theta << endl;
-            cout << "V: " << v << endl;
+            cout << "[navMPCNode::controlLoopCB] theta: " << theta << endl;
+            cout << "[navMPCNode::controlLoopCB] V: " << v << endl;
             //cout << "odom_path: \n" << odom_path << endl;
             //cout << "x_points: \n" << x_veh << endl;
             //cout << "y_points: \n" << y_veh << endl;
-            cout << "coeffs: \n" << coeffs << endl;
-            cout << "_w: \n" << _w << endl;
-            cout << "_throttle: \n" << _throttle << endl;
-            cout << "_speed: \n" << _speed << endl;
+            cout << "[navMPCNode::controlLoopCB] coeffs: \n" << coeffs << endl;
+            cout << "[navMPCNode::controlLoopCB] _w: \n" << _w << endl;
+            cout << "[navMPCNode::controlLoopCB] _throttle: \n" << _throttle << endl;
+            cout << "[navMPCNode::controlLoopCB] _speed: \n" << _speed << endl;
         }
 
         // Display the MPC predicted trajectory
@@ -532,7 +531,7 @@ void MPCNode::controlLoopCB(const ros::TimerEvent&)
         _w = 0;
         if(_goal_reached && _goal_received)
         {
-            cout << "Goal Reached: control loop !" << endl;
+            cout << "[navMPCNode::controlLoopCB] Goal Reached: control loop !" << endl;
         }
     }
     // publish general cmd_vel 
@@ -553,7 +552,7 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "MPC_Node");
     MPCNode mpc_node;
 
-    ROS_INFO("Waiting for global path msgs ~");
+    ROS_INFO("[navMPCNode::main] Waiting for global path msgs ~");
     ros::AsyncSpinner spinner(mpc_node.get_thread_numbers()); // Use multi threads
     spinner.start();
     ros::waitForShutdown();

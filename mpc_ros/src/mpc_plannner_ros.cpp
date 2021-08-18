@@ -183,15 +183,15 @@ namespace mpc_ros{
         _mpc.LoadParams(_mpc_params);
         //Display the parameters
         cout << "\n===== Parameters =====" << endl;
-        cout << "debug_info: "  << _debug_info << endl;
-        cout << "delay_mode: "  << _delay_mode << endl;
+        cout << "[mpc_plannner_ros::setPlan] debug_info    : "  << _debug_info << endl;
+        cout << "[mpc_plannner_ros::setPlan] delay_mode    : "  << _delay_mode << endl;
         //cout << "vehicle_Lf: "  << _Lf << endl;
-        cout << "frequency: "   << _dt << endl;
-        cout << "mpc_steps: "   << _mpc_steps << endl;
-        cout << "mpc_ref_vel: " << _ref_vel << endl;
-        cout << "mpc_w_cte: "   << _w_cte << endl;
-        cout << "mpc_w_etheta: "  << _w_etheta << endl;
-        cout << "mpc_max_angvel: "  << _max_angvel << endl;
+        cout << "[mpc_plannner_ros::setPlan] frequency     : "   << _dt << endl;
+        cout << "[mpc_plannner_ros::setPlan] mpc_steps     : "   << _mpc_steps << endl;
+        cout << "[mpc_plannner_ros::setPlan] mpc_ref_vel   : " << _ref_vel << endl;
+        cout << "[mpc_plannner_ros::setPlan] mpc_w_cte     : "   << _w_cte << endl;
+        cout << "[mpc_plannner_ros::setPlan] mpc_w_etheta  : "  << _w_etheta << endl;
+        cout << "[mpc_plannner_ros::setPlan] mpc_max_angvel: "  << _max_angvel << endl;
 
         latchedStopRotateController_.resetLatching();
         planner_util_.setPlan(orig_global_plan);
@@ -323,7 +323,7 @@ namespace mpc_ros{
     {         
         // dynamic window sampling approach to get useful velocity commands
         if(! isInitialized()){
-            ROS_ERROR("This planner has not been initialized, please call initialize() before using this planner");
+            ROS_ERROR("[mpc_plannner_ros::mpcComputeVelocityCommands] This planner has not been initialized, please call initialize() before using this planner");
             return false;
         }
 
@@ -468,7 +468,7 @@ namespace mpc_ros{
             }
             //DEBUG      
             if(_debug_info){
-                cout << endl << "odom_path: " << odom_path.poses.size()
+                cout << endl << "[mpc_plannner_ros::findBestPath] odom_path: " << odom_path.poses.size()
                 << ", path[0]: " << odom_path.poses[0]
                 << ", path[N]: " << odom_path.poses[odom_path.poses.size()-1] << endl;
             }  
@@ -500,9 +500,9 @@ namespace mpc_ros{
         // Fit waypoints
         auto coeffs = polyfit(x_veh, y_veh, 3); 
         const double cte  = polyeval(coeffs, 0.0);
-        cout << "coeffs : " << coeffs[0] << endl;
-        cout << "pow : " << pow(0.0 ,0) << endl;
-        cout << "cte : " << cte << endl;
+        cout << "[mpc_plannner_ros::findBestPath] coeffs : " << coeffs[0] << endl;
+        cout << "[mpc_plannner_ros::findBestPath] pow : " << pow(0.0 ,0) << endl;
+        cout << "[mpc_plannner_ros::findBestPath] cte : " << cte << endl;
         double etheta = atan(coeffs[1]);
 
         // Global coordinate system about theta
@@ -528,14 +528,14 @@ namespace mpc_ros{
             etheta = temp_theta - traj_deg;
         else
             etheta = 0;  
-        cout << "etheta: "<< etheta << ", atan2(gy,gx): " << atan2(gy,gx) << ", temp_theta:" << traj_deg << endl;
+        cout << "[mpc_plannner_ros::findBestPath] etheta: "<< etheta << ", atan2(gy,gx): " << atan2(gy,gx) << ", temp_theta:" << traj_deg << endl;
 
         // Difference bewteen current position and goal position
         const double x_err = goal_pose.pose.position.x -  base_odom.pose.pose.position.x;
         const double y_err = goal_pose.pose.position.y -  base_odom.pose.pose.position.y;
         const double goal_err = sqrt(x_err*x_err + y_err*y_err);
 
-        cout << "x_err:"<< x_err << ", y_err:"<< y_err  << endl;
+        cout << "[mpc_plannner_ros::findBestPath] x_err:"<< x_err << ", y_err:"<< y_err  << endl;
 
         VectorXd state(6);
         if(_delay_mode)
@@ -560,7 +560,7 @@ namespace mpc_ros{
         ros::Time begin = ros::Time::now();
         vector<double> mpc_results = _mpc.Solve(state, coeffs);    
         ros::Time end = ros::Time::now();
-        cout << "Duration: " << end.sec << "." << end.nsec << endl << begin.sec<< "."  << begin.nsec << endl;
+        cout << "[mpc_plannner_ros::findBestPath] Solving time: " << end.sec << "." << end.nsec << endl << begin.sec<< "."  << begin.nsec << endl;
             
         // MPC result (all described in car frame), output = (acceleration, w)        
         _w = mpc_results[0]; // radian/sec, angular velocity
@@ -575,15 +575,15 @@ namespace mpc_ros{
         if(_debug_info)
         {
             cout << "\n\nDEBUG" << endl;
-            cout << "theta: " << theta << endl;
-            cout << "V: " << v << endl;
+            cout << "[mpc_plannner_ros::findBestPath] theta    : " << theta << endl;
+            cout << "[mpc_plannner_ros::findBestPath] V        : " << v << endl;
             //cout << "odom_path: \n" << odom_path << endl;
             //cout << "x_points: \n" << x_veh << endl;
             //cout << "y_points: \n" << y_veh << endl;
-            cout << "coeffs: \n" << coeffs << endl;
-            cout << "_w: \n" << _w << endl;
-            cout << "_throttle: \n" << _throttle << endl;
-            cout << "_speed: \n" << _speed << endl;
+            cout << "[mpc_plannner_ros::findBestPath] coeffs   : " << coeffs << endl;
+            cout << "[mpc_plannner_ros::findBestPath] _w       : " << _w << endl;
+            cout << "[mpc_plannner_ros::findBestPath] _throttle: " << _throttle << endl;
+            cout << "[mpc_plannner_ros::findBestPath] _speed   : " << _speed << endl;
         }
         // Display the MPC predicted trajectory
         _mpc_traj = nav_msgs::Path();
@@ -663,17 +663,17 @@ namespace mpc_ros{
 
 	bool MPCPlannerROS::isGoalReached(){
         if( ! isInitialized()) {
-            ROS_ERROR("This planner has not been initialized, please call initialize() before using this planner");
+            ROS_ERROR("[mpc_plannner_ros::isGoalReached] This planner has not been initialized, please call initialize() before using this planner");
             return false;
         }
 
         if ( ! costmap_ros_->getRobotPose(current_pose_)) {
-            ROS_ERROR("Could not get robot pose");
+            ROS_ERROR("[mpc_plannner_ros::isGoalReached] Could not get robot pose");
             return false;
         }
 
         if(latchedStopRotateController_.isGoalReached(&planner_util_, odom_helper_, current_pose_)) {
-            ROS_INFO("Goal reached");
+            ROS_INFO("[mpc_plannner_ros::isGoalReached] Goal reached");
             return true;
         } else {
             return false;
