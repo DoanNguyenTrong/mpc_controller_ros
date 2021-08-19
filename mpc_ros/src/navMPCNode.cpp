@@ -84,7 +84,7 @@ class MPCNode
         double _dt, _w, _throttle, _speed, _max_speed;
         double _pathLength, _goalRadius, _waypointsDist;
         int _controller_freq, _downSampling, _thread_numbers;
-        bool _goal_received, _goal_reached, _path_computed, _pub_twist_flag, _debug_info, _delay_mode;
+        bool _goal_received, _goal_reached, _path_computed, _pub_twist_flag, _debug_info, _delay_mode, _onetime_noti;
         double polyeval(Eigen::VectorXd coeffs, double x);
         Eigen::VectorXd polyfit(Eigen::VectorXd xvals, Eigen::VectorXd yvals, int order);
 
@@ -140,16 +140,16 @@ MPCNode::MPCNode()
 
     //Display the parameters
     cout << "\n===== Parameters =====" << endl;
-    cout << "pub_twist_cmd: "  << _pub_twist_flag << endl;
-    cout << "debug_info: "  << _debug_info << endl;
-    cout << "delay_mode: "  << _delay_mode << endl;
+    cout << "[navMPCNode::MPCNode] pub_twist_cmd: "  << _pub_twist_flag << endl;
+    cout << "[navMPCNode::MPCNode] debug_info: "  << _debug_info << endl;
+    cout << "[navMPCNode::MPCNode] delay_mode: "  << _delay_mode << endl;
     //cout << "vehicle_Lf: "  << _Lf << endl;
-    cout << "frequency: "   << _dt << endl;
-    cout << "mpc_steps: "   << _mpc_steps << endl;
-    cout << "mpc_ref_vel: " << _ref_vel << endl;
-    cout << "mpc_w_cte: "   << _w_cte << endl;
-    cout << "mpc_w_etheta: "  << _w_etheta << endl;
-    cout << "mpc_max_angvel: "  << _max_angvel << endl;
+    cout << "[navMPCNode::MPCNode] frequency: "   << _dt << endl;
+    cout << "[navMPCNode::MPCNode] mpc_steps: "   << _mpc_steps << endl;
+    cout << "[navMPCNode::MPCNode] mpc_ref_vel: " << _ref_vel << endl;
+    cout << "[navMPCNode::MPCNode] mpc_w_cte: "   << _w_cte << endl;
+    cout << "[navMPCNode::MPCNode] mpc_w_etheta: "  << _w_etheta << endl;
+    cout << "[navMPCNode::MPCNode] mpc_max_angvel: "  << _max_angvel << endl;
 
     //Publishers and Subscribers
     _sub_odom   = _nh.subscribe("/odom", 1, &MPCNode::odomCB, this);
@@ -172,6 +172,8 @@ MPCNode::MPCNode()
     _throttle = 0.0; 
     _w = 0.0;
     _speed = 0.0;
+
+    _onetime_noti = false;
 
     //_ackermann_msg = ackermann_msgs::AckermannDriveStamped();
     _twist_msg = geometry_msgs::Twist();
@@ -319,6 +321,7 @@ void MPCNode::goalCB(const geometry_msgs::PoseStamped::ConstPtr& goalMsg)
     _goal_pos = goalMsg->pose.position;
     _goal_received = true;
     _goal_reached = false;
+    _onetime_noti = true;
     ROS_INFO("[navMPCNode::goalCB] Goal Received :goalCB!");
 }
 
@@ -351,8 +354,10 @@ void MPCNode::amclCB(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& a
             _goal_received = false;
             _goal_reached = true;
             _path_computed = false;
-            ROS_INFO("[navMPCNode::amclCB] Goal Reached !");
-            cout << "[navMPCNode::amclCB] tracking time: " << tracking_time_sec << "." << tracking_time_nsec << endl;
+            _onetime_noti = true;
+            ROS_INFO("[navMPCNode::amclCB] Goal Reached ! %.3f", dist2goal);
+            ROS_INFO("[navMPCNode::amclCB] States: _goal_received=%d, _goal_reached=%d, _path_computed=%d", _goal_received, _goal_reached, _path_computed);
+            ROS_INFO("[navMPCNode::amclCB] tracking time: %d.%d", tracking_time_sec, tracking_time_nsec);
 
         }
     }
@@ -529,9 +534,11 @@ void MPCNode::controlLoopCB(const ros::TimerEvent&)
         _throttle = 0.0;
         _speed = 0.0;
         _w = 0;
-        if(_goal_reached && _goal_received)
+        if(_goal_reached && !_goal_received && _onetime_noti)
         {
-            cout << "[navMPCNode::controlLoopCB] Goal Reached: control loop !" << endl;
+            ROS_INFO("[navMPCNode::controlLoopCB] Goal Reached: control loop !");
+            ROS_INFO("[navMPCNode::controlLoopCB] States: _goal_received=%d, _goal_reached=%d, _path_computed=%d", _goal_received, _goal_reached, _path_computed);
+            _onetime_noti = false;
         }
     }
     // publish general cmd_vel 

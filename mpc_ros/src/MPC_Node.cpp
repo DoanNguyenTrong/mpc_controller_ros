@@ -72,7 +72,7 @@ class MPCNode
         double _dt, _w, _throttle, _speed, _max_speed;
         double _pathLength, _goalRadius, _waypointsDist;
         int _controller_freq, _downSampling, _thread_numbers;
-        bool _goal_received, _goal_reached, _path_computed, _pub_twist_flag, _debug_info, _delay_mode;
+        bool _goal_received, _goal_reached, _path_computed, _pub_twist_flag, _debug_info, _delay_mode, _onetime_noti;
 
         double polyeval(Eigen::VectorXd coeffs, double x);
         Eigen::VectorXd polyfit(Eigen::VectorXd xvals, Eigen::VectorXd yvals, int order);
@@ -169,6 +169,8 @@ MPCNode::MPCNode()
     _w = 0.0;
     _speed = 0.0;
 
+    _onetime_noti = false;
+    
     //_ackermann_msg = ackermann_msgs::AckermannDriveStamped();
     _twist_msg = geometry_msgs::Twist();
     _mpc_traj = nav_msgs::Path();
@@ -499,7 +501,8 @@ void MPCNode::goalCB(const geometry_msgs::PoseStamped::ConstPtr& goalMsg)
     _goal_pos = goalMsg->pose.position;
     _goal_received = true;
     _goal_reached = false;
-    ROS_INFO("Goal Received :goalCB!");
+    _onetime_noti = true;
+    ROS_INFO("[MPC_Node::goalCB] Goal Received :goalCB!");
 }
 
 
@@ -516,7 +519,9 @@ void MPCNode::amclCB(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& a
             _goal_received = false;
             _goal_reached = true;
             _path_computed = false;
-            ROS_INFO("[MPC_Node::amclCB] Goal Reached !");
+            _onetime_noti = true;
+            ROS_INFO("[MPC_Node::amclCB] Goal Reached ! dist2goal=%.3f", dist2goal);
+            ROS_INFO("[MPC_Node::amclCB] States: _goal_received=%d, _goal_reached=%d, _path_computed=%d", _goal_received, _goal_reached, _path_computed);
         }
     }
 }
@@ -633,8 +638,12 @@ void MPCNode::controlLoopCB(const ros::TimerEvent&)
         _throttle = 0.0;
         _speed = 0.0;
         _w = 0;
-        if(_goal_reached && _goal_received)
-            cout << "[MPC_Node::controlLoopCB] Goal Reached !" << endl;
+        if(_goal_reached && !_goal_received && _onetime_noti)
+        {
+            ROS_INFO("[MPC_Node::controlLoopCB] Goal Reached !");
+            ROS_INFO("[MPC_Node::controlLoopCB] States: _goal_received=%d, _goal_reached=%d, _path_computed=%d", _goal_received, _goal_reached, _path_computed);
+            _onetime_noti = false;
+        }
     }
 
     // publish ankermann cmd_vel

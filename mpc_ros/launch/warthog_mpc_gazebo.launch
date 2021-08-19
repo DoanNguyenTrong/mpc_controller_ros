@@ -48,13 +48,13 @@
     <node pkg="amcl" type="amcl" name="amcl" output="screen">
         <!-- rosparam file="$(find mpc_ros)/params/amcl_params.yaml" command="load" / -->
         <rosparam file="$(find mpc_local_planner_examples)/cfg/amcl_params_w.yaml" command="load" />
-        <param name="initial_pose_x"            value="$(arg x_pos)"/>
+        <!--param name="initial_pose_x"            value="$(arg x_pos)"/>
         <param name="initial_pose_y"            value="$(arg y_pos)"/>
-        <param name="initial_pose_a"            value="$(arg yaw)"/>
+        <param name="initial_pose_a"            value="$(arg yaw)"/ -->
     </node>
 
     <!--  ************** Navigation ***************  -->    
-    <node pkg="move_base" type="move_base" respawn="false" name="move_base" >
+    <node pkg="move_base" type="move_base" respawn="false"  name="move_base" >
         <rosparam file="$(find mpc_ros)/params/costmap_common_params.yaml" command="load" ns="global_costmap" />
         <rosparam file="$(find mpc_ros)/params/costmap_common_params.yaml" command="load" ns="local_costmap" />
         <rosparam file="$(find mpc_ros)/params/local_costmap_params.yaml" command="load" />
@@ -69,7 +69,7 @@
         
         <!-- Local Planner doc="mpc_ros/MPCPlannerROS, dwa_local_planner/DWAPlannerROS" -->
         <rosparam file="$(find mpc_ros)/params/mpc_last_params.yaml" command="load" />
-        <param name="base_local_planner" value="mpc_ros/MPCPlannerROS,"  if="$(eval planner == 'mpc')"/>
+        <param name="base_local_planner" value="mpc_ros/MPCPlannerROS"  if="$(eval planner == 'mpc')"/>
         <param name="base_local_planner" value="dwa_local_planner/DWAPlannerROS"  if="$(eval planner == 'dwa')"/>    
         
         <!-- external controller >
