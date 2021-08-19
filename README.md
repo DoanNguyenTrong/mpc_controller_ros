@@ -1,7 +1,7 @@
 # Model Predictive Control implementation about ROS 
 
 **Credit to**: \
-https://github.com/Geonhee-LEE/mpc_ros.git 
+https://github.com/Geonhee-LEE/mpc_ros.git \
 https://github.com/DoanNguyenTrong/multiple-mpc-autonomous-cars/tree/main/udacity-CarND-MPC-Project
 
 ## Abstract
