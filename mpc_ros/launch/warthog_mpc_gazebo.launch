@@ -2,9 +2,9 @@
 
     <!--  ************** Global Parameters ***************  -->
     <param name="use_sim_time" value="true"/>
-    <arg name="controller"  default="nav_mpc" doc="opt: dwa, mpc, nav_mpc, pure_pursuit"/> 
-    <arg name="model"       default="warthog_bot" doc="opt: warthog_bot, serving_bot"/>
-    <arg name="planner"     default="dwa" doc="dwa, mpc" />
+    <arg name="controller"  default="mpc"           doc="opt: dwa, mpc, nav_mpc, pure_pursuit"/> 
+    <arg name="model"       default="warthog_bot"   doc="opt: warthog_bot, serving_bot"/>
+    <arg name="planner"     default="mpc"           doc="dwa, mpc, nav_mpc" />
     <arg name="tf_prefix"    default=""/> 
 
     <!--  ************** GAZEBO Simulator ***************  -->
@@ -46,11 +46,11 @@
     <!--  ************** Localization **************  -->
     
     <node pkg="amcl" type="amcl" name="amcl" output="screen">
-        <!-- rosparam file="$(find mpc_ros)/params/amcl_params.yaml" command="load" / -->
+        <!--rosparam file="$(find mpc_ros)/params/amcl_params.yaml" command="load" /-->
         <rosparam file="$(find mpc_local_planner_examples)/cfg/amcl_params_w.yaml" command="load" />
         <!--param name="initial_pose_x"            value="$(arg x_pos)"/>
         <param name="initial_pose_y"            value="$(arg y_pos)"/>
-        <param name="initial_pose_a"            value="$(arg yaw)"/ -->
+        <param name="initial_pose_a"            value="$(arg yaw)"/-->
     </node>
 
     <!--  ************** Navigation ***************  -->    
@@ -68,19 +68,21 @@
         <rosparam file="$(find mpc_ros)/params/global_planner_params.yaml" command="load" />
         
         <!-- Local Planner doc="mpc_ros/MPCPlannerROS, dwa_local_planner/DWAPlannerROS" -->
-        <rosparam file="$(find mpc_ros)/params/mpc_last_params.yaml" command="load" />
-        <param name="base_local_planner" value="mpc_ros/MPCPlannerROS"  if="$(eval planner == 'mpc')"/>
-        <param name="base_local_planner" value="dwa_local_planner/DWAPlannerROS"  if="$(eval planner == 'dwa')"/>    
+        <!--rosparam file="$(find mpc_ros)/params/mpc_last_params.yaml" command="load" /-->
+
+        <param name="base_local_planner" value="base_local_planner/TrajectoryPlannerROS"  if="$(eval planner == 'mpc')"/>
+        <param name="base_local_planner" value="mpc_ros/MPCPlannerROS"                    if="$(eval planner == 'nav_mpc')"/>
+        <param name="base_local_planner" value="dwa_local_planner/DWAPlannerROS"          if="$(eval planner == 'dwa')"/>    
         
-        <!-- external controller >
-        <remap from="/cmd_vel" to="/fake_cmd" unless="$(eval controller == 'dwa')"/-->
+        <!-- external controller -->
+        <remap from="/cmd_vel" to="/fake_cmd" unless="$(eval controller == 'dwa')"/>
     </node>
     
     <!--  ************** MPC Node **************  -->
     <node name="MPC_Node" pkg="mpc_ros" type="MPC_Node" output="screen" if="$(eval controller == 'mpc')" >
-        <rosparam file="$(find mpc_ros)/params/mpc_params.yaml" command="load" />
+        <rosparam file="$(find mpc_ros)/params/mpc_MPC_Node_params.yaml" command="load" />
     </node>
-    <node name="nav_mpc" pkg="mpc_ros" type="nav_mpc" output="screen" if="$(eval controller == 'nav_mpc')" >
+    <node name="nav_mpc" pkg="mpc_ros" type="nav_mpc" output="screen"   if="$(eval controller == 'nav_mpc')" >
         <rosparam file="$(find mpc_ros)/params/mpc_last_params.yaml" command="load" />
     </node>
 

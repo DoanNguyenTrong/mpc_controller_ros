@@ -34,18 +34,22 @@ class FG_eval
     public:
         // Fitted polynomial coefficients
         Eigen::VectorXd coeffs;
+        bool _debugging = false;
+        int _debug_level= 0; // {0, 1, 2, 3} ~ {no, little, medium, detail}
 
         double _dt, _ref_cte, _ref_etheta, _ref_vel; 
         double  _w_cte, _w_etheta, _w_vel, _w_angvel, _w_accel, _w_angvel_d, _w_accel_d;
         int _mpc_steps, _x_start, _y_start, _theta_start, _v_start, _cte_start, _etheta_start, _angvel_start, _a_start;
 
         AD<double> cost_cte, cost_etheta, cost_vel;
+        
         // Constructor
         FG_eval(Eigen::VectorXd coeffs) 
         { 
             this->coeffs = coeffs; 
 
-            // Set default value    
+            // Set default value  
+            _debugging = false;  
             _dt = 0.1;  // in sec
             _ref_cte   = 0;
             _ref_etheta  = 0;
@@ -72,8 +76,12 @@ class FG_eval
         // Load parameters for constraints
         void LoadParams(const std::map<string, double> &params)
         {
+            _debugging = params.find("DEBUGGING") != params.end() ? params.at("DEBUGGING") : _debugging;
+
             _dt = params.find("DT") != params.end() ? params.at("DT") : _dt;
+
             _mpc_steps = params.find("STEPS") != params.end()    ? params.at("STEPS") : _mpc_steps;
+
             _ref_cte   = params.find("REF_CTE") != params.end()  ? params.at("REF_CTE") : _ref_cte;
             _ref_etheta  = params.find("REF_ETHETA") != params.end() ? params.at("REF_ETHETA") : _ref_etheta;
             _ref_vel   = params.find("REF_V") != params.end()    ? params.at("REF_V") : _ref_vel;
@@ -85,7 +93,25 @@ class FG_eval
             _w_accel = params.find("W_A") != params.end()     ? params.at("W_A") : _w_accel;
             _w_angvel_d = params.find("W_DANGVEL") != params.end() ? params.at("W_DANGVEL") : _w_angvel_d;
             _w_accel_d = params.find("W_DA") != params.end()     ? params.at("W_DA") : _w_accel_d;
+            
+            if (_debugging && (_debug_level >= 3)){
+                std::cout << "[MPC::FG_eval::loadParams] mpc_dt        : "   << _dt << endl;
 
+                std::cout << "[MPC::FG_eval::loadParams] mpc_steps     : "   << _mpc_steps << endl;
+
+                std::cout << "[MPC::FG_eval::loadParams] mpc_ref_cte   : "   << _ref_cte << endl;
+                std::cout << "[MPC::FG_eval::loadParams] mpc_ref_vel   : "   << _ref_vel << endl;
+                std::cout << "[MPC::FG_eval::loadParams] mpc_ref_etheta: "   << _ref_etheta << endl;
+
+                std::cout << "[MPC::FG_eval::loadParams] mpc_w_cte      : "  << _w_cte << endl;
+                std::cout << "[MPC::FG_eval::loadParams] mpc_w_etheta   : "  << _w_etheta << endl;
+                std::cout << "[MPC::FG_eval::loadParams] mpc_w_vel      : "  << _w_vel << endl;
+                std::cout << "[MPC::FG_eval::loadParams] mpc__w_angvel  : "  << _w_angvel << endl;
+                std::cout << "[MPC::FG_eval::loadParams] mpc_w_angvel_d : "  << _w_angvel_d << endl;
+                std::cout << "[MPC::FG_eval::loadParams] mpc_w_accel    : "  << _w_accel << endl;
+                std::cout << "[MPC::FG_eval::loadParams] mpc_w_accel_d  : "  << _w_accel_d << endl;
+            }
+                    
             _x_start     = 0;
             _y_start     = _x_start + _mpc_steps;
             _theta_start   = _y_start + _mpc_steps;
@@ -127,12 +153,36 @@ class FG_eval
               fg[0] += _w_etheta * CppAD::pow(vars[_etheta_start + i] - _ref_etheta, 2); // heading error
               fg[0] += _w_vel * CppAD::pow(vars[_v_start + i] - _ref_vel, 2); // speed error
 
-              cost_cte +=  _w_cte * CppAD::pow(vars[_cte_start + i] - _ref_cte, 2);
-              cost_etheta +=  (_w_etheta * CppAD::pow(vars[_etheta_start + i] - _ref_etheta, 2)); 
-              cost_vel +=  (_w_vel * CppAD::pow(vars[_v_start + i] - _ref_vel, 2)); 
+              cost_cte      +=  _w_cte * CppAD::pow(vars[_cte_start + i] - _ref_cte, 2);
+              cost_etheta   +=  (_w_etheta * CppAD::pow(vars[_etheta_start + i] - _ref_etheta, 2)); 
+              cost_vel      +=  (_w_vel * CppAD::pow(vars[_v_start + i] - _ref_vel, 2)); 
             }
-            cout << "-----------------------------------------------" <<endl;
-            cout << "[MPC::FG_eval] cost_cte, etheta, velocity: " << cost_cte << ", " << cost_etheta  << ", " << cost_vel << endl;
+            if (_debugging && (_debug_level >= 2)){
+                cout << "[MPC::FG_eval] cost_cte, etheta, velocity: " << cost_cte << ", " << cost_etheta  << ", " << cost_vel << endl;
+                if (CppAD::isnan(cost_cte)){
+                    std::cout << "params: cte\n";
+                    for (int i = 0; i < _mpc_steps; i++){
+                        std::cout << vars[_cte_start + i] << ", ";
+                    }
+                    std::cout << "\n";
+                }
+                if (CppAD::isnan(cost_etheta)){
+                    std::cout << "params: etheta\n";
+                    for (int i = 0; i < _mpc_steps; i++){
+                        std::cout << vars[_etheta_start + i] << ", ";
+                    }
+                    std::cout << "\n";
+                }
+                if (CppAD::isnan(cost_vel)){
+                    std::cout << "params: v\n";
+                    for (int i = 0; i < _mpc_steps; i++){
+                        std::cout << vars[_v_start + i] << ", ";
+                    }
+                    std::cout << "\n";
+                }
+
+
+            }
             
 
             // Minimize the use of actuators.
@@ -140,14 +190,19 @@ class FG_eval
               fg[0] += _w_angvel * CppAD::pow(vars[_angvel_start + i], 2);
               fg[0] += _w_accel * CppAD::pow(vars[_a_start + i], 2);
             }
-            cout << "[MPC::FG_eval] cost of actuators: " << fg[0] << endl; 
+            if (_debugging && (_debug_level >= 2)){
+                std::cout << "[MPC::FG_eval] cost of actuators: " << fg[0] << endl;
+            }
+            
 
             // Minimize the value gap between sequential actuations.
             for (int i = 0; i < _mpc_steps - 2; i++) {
               fg[0] += _w_angvel_d * CppAD::pow(vars[_angvel_start + i + 1] - vars[_angvel_start + i], 2);
               fg[0] += _w_accel_d * CppAD::pow(vars[_a_start + i + 1] - vars[_a_start + i], 2);
             }
-            cout << "[MPC::FG_eval] cost of gap: " << fg[0] << endl; 
+            if (_debugging && (_debug_level >= 2)){
+                cout << "[MPC::FG_eval] cost of gap: " << fg[0] << endl; 
+            }
             
 
             // fg[x] for constraints
@@ -258,7 +313,13 @@ void MPC::LoadParams(const std::map<string, double> &params)
     _angvel_start = _etheta_start + _mpc_steps;
     _a_start     = _angvel_start + _mpc_steps - 1;
 
-    cout << "[MPC::loadParams] MPC Obj parameters updated !! " << endl; 
+    if (_params["DEBUGGING"] && (_params["DEBUG_LEVEL"] >= 2)){
+        std::cout << "[MPC::loadParams] MPC Obj parameters updated !! " << endl; 
+        std::cout << "[MPC::loadParams] mpc_steps       : "  << _mpc_steps << endl;
+        std::cout << "[MPC::loadParams] mpc_max_angvel  : "  << _max_angvel << endl;
+        std::cout << "[MPC::loadParams] mpc_max_throttle: "  << _max_throttle << endl;
+        std::cout << "[MPC::loadParams] mpc_bound_value : "  << _bound_value << endl;
+    }
 }
 
 
@@ -273,6 +334,12 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs)
     const double v = state[3];
     const double cte = state[4];
     const double etheta = state[5];
+
+    if (_params["DEBUGGING"] && (_params["DEBUG_LEVEL"] >= 2)){
+        std::printf("[MPC::Solve] Current state: (%.3f, %.3f, %.3f, %.3f, %.3f, %.3f)\n", 
+                                    state[0], state[1], state[2], state[3], state[4], state[5]);
+        std::printf("[MPC::Solve] Coeff          : (%.3f, %.3f, %.3f %.3f)\n", coeffs[0], coeffs[1], coeffs[2], coeffs[3]);
+    }
 
     // Set the number of model variables (includes both states and inputs).
     // For example: If the state is a 4 element vector, the actuators is a 2
@@ -381,8 +448,11 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs)
 
     // Cost
     auto cost = solution.obj_value;
-    std::cout << "[MPC::Solve] Cost: " << cost << std::endl;
-    cout << "-----------------------------------------------" <<endl;
+
+    if (_params["DEBUGGING"] && (_params["DEBUG_LEVEL"] >= 1)){
+        std::cout << "[MPC::Solve] Cost: " << cost << std::endl;
+    }
+
     this->mpc_x = {};
     this->mpc_y = {};
     for (int i = 0; i < _mpc_steps; i++) 

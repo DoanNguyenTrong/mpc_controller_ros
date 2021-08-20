@@ -1,6 +1,4 @@
-
-
-MPCPlannerROS:
+TrajectoryPlannerROS:
 # Robot Configuration Parameters
   map_frame: "map"
   odom_frame: "odom"
@@ -49,25 +47,29 @@ MPCPlannerROS:
 
   # Parameters for control loop
   debug_info: true
-  debug_level: 0
   delay_mode: true
-  max_speed: 1.5 # unit: m/s #0.8
+  max_speed: 4 # unit: m/s #0.8
   waypoints_dist: -1.0 # unit: m, set < 0 means computed by node
   path_length: 5.0 # unit: m
-  controller_freq: 10
+  controller_freq: 20
+  
+  # Parameters for control loop
+  pub_twist_cmd: true
+  goal_radius: 0.05 # unit: m
 
   # Parameter for MPC solver
   mpc_steps: 10.0
   mpc_ref_cte: 0.0
-  mpc_ref_vel: 1.5 #1.0
+  mpc_ref_vel: 3.001 #1.0
   mpc_ref_etheta: 0.0
-  mpc_w_cte: 1000.0
-  mpc_w_etheta: 1000.0
+  mpc_w_cte: 1211.0
+  mpc_w_etheta: 5210.0
   mpc_w_vel: 100.0 #100.0
   mpc_w_angvel: 100.0 #100.0
   mpc_w_angvel_d: 0.0
   mpc_w_accel: 50.0
   mpc_w_accel_d: 10.0
-  mpc_max_angvel: 1.0 #2.5 #1.0
+  mpc_max_angvel: 3.5 #2.5 #1.0
   mpc_max_throttle: 1.0 # Maximal throttle accel
   mpc_bound_value: 1.0e3 # Bound value for other variables
+

@@ -1,20 +1,3 @@
-/*
-# Copyright 2018 HyphaROS Workshop.
-# Developer: HaoChih, LIN (hypha.ros@gmail.com)
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-*/
-
 #include <iostream>
 #include <map>
 #include <math.h>
@@ -27,7 +10,7 @@
 // #include <tf/transform_datatypes.h>
 #include <nav_msgs/Path.h>
 #include <nav_msgs/Odometry.h>
-//#include <ackermann_msgs/AckermannDriveStamped.h>
+// #include <ackermann_msgs/AckermannDriveStamped.h>
 #include <visualization_msgs/Marker.h>
 
 #include "MPC.h"
@@ -71,7 +54,7 @@ class MPCNode
         //double _Lf; 
         double _dt, _w, _throttle, _speed, _max_speed;
         double _pathLength, _goalRadius, _waypointsDist;
-        int _controller_freq, _downSampling, _thread_numbers;
+        int _controller_freq, _downSampling, _thread_numbers, _debug_level;
         bool _goal_received, _goal_reached, _path_computed, _pub_twist_flag, _debug_info, _delay_mode, _onetime_noti;
 
         double polyeval(Eigen::VectorXd coeffs, double x);
@@ -100,6 +83,7 @@ MPCNode::MPCNode()
     pn.param("thread_numbers", _thread_numbers, 2); // number of threads for this ROS node
     pn.param("pub_twist_cmd", _pub_twist_flag, true);
     pn.param("debug_info", _debug_info, true);
+    pn.param("debug_level", _debug_level, 0);
     pn.param("delay_mode", _delay_mode, true);
     pn.param("max_speed", _max_speed, 0.50); // unit: m/s
     pn.param("waypoints_dist", _waypointsDist, -1.0); // unit: m
@@ -111,9 +95,11 @@ MPCNode::MPCNode()
 
     //Parameter for MPC solver
     pn.param("mpc_steps", _mpc_steps, 20.0);
+
     pn.param("mpc_ref_cte", _ref_cte, 0.0);
     pn.param("mpc_ref_vel", _ref_vel, 1.0);
     pn.param("mpc_ref_etheta", _ref_etheta, 0.0);
+
     pn.param("mpc_w_cte", _w_cte, 5000.0);
     pn.param("mpc_w_etheta", _w_etheta, 5000.0);
     pn.param("mpc_w_vel", _w_vel, 1.0);
@@ -121,6 +107,7 @@ MPCNode::MPCNode()
     pn.param("mpc_w_angvel_d", _w_angvel_d, 10.0);
     pn.param("mpc_w_accel", _w_accel, 50.0);
     pn.param("mpc_w_accel_d", _w_accel_d, 10.0);
+
     pn.param("mpc_max_angvel", _max_angvel, 3.0); // Maximal angvel radian (~30 deg)
     pn.param("mpc_max_throttle", _max_throttle, 1.0); // Maximal throttle accel
     pn.param("mpc_bound_value", _bound_value, 1.0e3); // Bound value for other variables
@@ -133,17 +120,30 @@ MPCNode::MPCNode()
     pn.param<std::string>("car_frame", _car_frame, "base_footprint" );
 
     //Display the parameters
-    cout << "\n===== Parameters =====" << endl;
-    cout << "[MPC_Node::MPC] pub_twist_cmd : "  << _pub_twist_flag << endl;
-    cout << "[MPC_Node::MPC] debug_info    : "  << _debug_info << endl;
-    cout << "[MPC_Node::MPC] delay_mode    : "  << _delay_mode << endl;
-    //cout << "vehicle_Lf: "  << _Lf << endl;
-    cout << "[MPC_Node::MPC] frequency     : "   << _dt << endl;
-    cout << "[MPC_Node::MPC] mpc_steps     : "   << _mpc_steps << endl;
-    cout << "[MPC_Node::MPC] mpc_ref_vel   : " << _ref_vel << endl;
-    cout << "[MPC_Node::MPC] mpc_w_cte     : "   << _w_cte << endl;
-    cout << "[MPC_Node::MPC] mpc_w_etheta  : "  << _w_etheta << endl;
-    cout << "[MPC_Node::MPC] mpc_max_angvel: "  << _max_angvel << endl;
+    if (_debug_info && (_debug_level >=1) ){
+        cout << "[MPC_Node::MPC] pub_twist_cmd : "   << _pub_twist_flag << endl;
+        cout << "[MPC_Node::MPC] delay_mode    : "   << _delay_mode << endl;
+
+        cout << "\n[MPC_Node::MPC] mpc_dt        : "   << _dt << endl;
+
+        cout << "\n[MPC_Node::MPC] mpc_steps     : "   << _mpc_steps << endl;
+
+        cout << "\n[MPC_Node::MPC] mpc_ref_cte   : "   << _ref_cte << endl;
+        cout << "[MPC_Node::MPC] mpc_ref_vel   : "   << _ref_vel << endl;
+        cout << "[MPC_Node::MPC] mpc_ref_etheta: "   << _ref_etheta << endl;
+
+        cout << "\n[MPC_Node::MPC] mpc_w_cte      : "  << _w_cte << endl;
+        cout << "[MPC_Node::MPC] mpc_w_etheta   : "  << _w_etheta << endl;
+        cout << "[MPC_Node::MPC] mpc_w_vel      : "  << _w_vel << endl;
+        cout << "[MPC_Node::MPC] mpc_w_angvel  : "  << _w_angvel << endl;
+        cout << "[MPC_Node::MPC] mpc_w_angvel_d : "  << _w_angvel_d << endl;
+        cout << "[MPC_Node::MPC] mpc_w_accel    : "  << _w_accel << endl;
+        cout << "[MPC_Node::MPC] mpc_w_accel_d  : "  << _w_accel_d << endl;
+
+        cout << "\n[MPC_Node::MPC] mpc_max_angvel  : "  << _max_angvel << endl;
+        cout << "[MPC_Node::MPC] mpc_max_throttle: "  << _max_throttle << endl;
+        cout << "[MPC_Node::MPC] mpc_bound_value : "  << _bound_value << endl;
+    }
 
     //Publishers and Subscribers
     _sub_odom   = _nh.subscribe("/odom", 1, &MPCNode::odomCB, this);
@@ -177,11 +177,13 @@ MPCNode::MPCNode()
 
     //Init parameters for MPC object
     _mpc_params["DT"] = _dt;
-    //_mpc_params["LF"] = _Lf;
+
     _mpc_params["STEPS"]    = _mpc_steps;
+
     _mpc_params["REF_CTE"]  = _ref_cte;
     _mpc_params["REF_ETHETA"] = _ref_etheta;
     _mpc_params["REF_V"]    = _ref_vel;
+
     _mpc_params["W_CTE"]    = _w_cte;
     _mpc_params["W_EPSI"]   = _w_etheta;
     _mpc_params["W_V"]      = _w_vel;
@@ -189,9 +191,14 @@ MPCNode::MPCNode()
     _mpc_params["W_A"]      = _w_accel;
     _mpc_params["W_DANGVEL"] = _w_angvel_d;
     _mpc_params["W_DA"]     = _w_accel_d;
+
     _mpc_params["ANGVEL"]   = _max_angvel;
     _mpc_params["MAXTHR"]   = _max_throttle;
     _mpc_params["BOUND"]    = _bound_value;
+
+    _mpc_params["DEBUGGING"]= _debug_info;
+    _mpc_params["DEBUG_LEVEL"]= _debug_level;
+
     _mpc.LoadParams(_mpc_params);
 }
 
@@ -242,199 +249,35 @@ Eigen::VectorXd MPCNode::polyfit(Eigen::VectorXd xvals, Eigen::VectorXd yvals, i
 void MPCNode::odomCB(const nav_msgs::Odometry::ConstPtr& odomMsg)
 {
     _odom = *odomMsg;
+    if (_debug_info && (_debug_level >=3)){
+        std::cout << "Update location: \n" << _odom << std::endl;
+    }
     
 }
 
 void MPCNode::makeGlobalPath(const nav_msgs::Odometry odomMsg)
 {
-    /*
-    nav_msgs::Path global_path = nav_msgs::Path();   
-    geometry_msgs::PoseStamped startPose;  
-    geometry_msgs::PoseStamped tempPose;
-    nav_msgs::Odometry odom = odomMsg; 
-
-    //Calculate the waypoint distance
-    double gap_x = _gen_path.poses[1].pose.position.x - _gen_path.poses[0].pose.position.x;
-    double gap_y = _gen_path.poses[1].pose.position.y - _gen_path.poses[0].pose.position.y;
-    _waypointsDist = sqrt(gap_x*gap_x + gap_y*gap_y);  
-
-    static double pre_odom_x = odom.pose.pose.position.x;
-    static double pre_odom_y = odom.pose.pose.position.y;
-    static double odom_diff = 0;
-    static int n_waypointMove = 0;
-    int N = _gen_path.poses.size(); // Number of waypoints    
-
-    try
-    {
-        double total_length = 0.0;
-
-        startPose.header.stamp = ros::Time::now();
-        startPose.header.frame_id = _odom_frame;
-        startPose.pose = odom.pose.pose;
-
-        global_path.poses.push_back(startPose); // copy current odom position to the start position
-               
-        // Calculate the difference and save the odom x,y
-        odom_diff = sqrt((odom.pose.pose.position.x - pre_odom_x)*(odom.pose.pose.position.x - pre_odom_x) + (odom.pose.pose.position.y-pre_odom_y)*(odom.pose.pose.position.y-pre_odom_y));
-        pre_odom_x = odom.pose.pose.position.x;
-        pre_odom_y = odom.pose.pose.position.y;
-        n_waypointMove += (int)(odom_diff / _waypointsDist);
-        cout << "n_waypointMove: " << n_waypointMove << endl;
-
-        if(n_waypointMove > N)
-        {
-            n_waypointMove = 0;
-        }
-        // Append the part of the generated path
-        for(int i = n_waypointMove; i < N ; i++)
-        {            
-            _tf_listener.transformPose(_odom_frame, ros::Time(0) , 
-                                            _gen_path.poses[i], _map_frame, tempPose);                     
-            global_path.poses.push_back(tempPose);                          
-            total_length = total_length + _waypointsDist;           
-        }   
-        
-
-        // publish global_path
-        global_path.header.frame_id = _odom_frame;
-        global_path.header.stamp = ros::Time::now();
-        _pub_globalpath.publish(global_path); 
-
-
-        //desiredPathCB(global_path); // for cutting and down sampling       
-    }
-    catch(tf::TransformException &ex)
-    {
-        ROS_ERROR("%s",ex.what());
-        ros::Duration(1.0).sleep();
-    }
-    */
 
 }
+
 // CallBack: Update generated path (conversion to odom frame)
 void MPCNode::desiredPathCB(const nav_msgs::Path::ConstPtr& totalPathMsg)
 {
-    /*
-    _gen_path = *totalPathMsg;
-
-    //For plan the global path about desired path 
-    makeGlobalPath(_odom);
-    
-    _goal_received = true;
-    _goal_reached = false;
-    nav_msgs::Path mpc_path = nav_msgs::Path();   // For generating mpc reference path  
-    geometry_msgs::PoseStamped tempPose;
-    nav_msgs::Odometry odom = _odom; 
-
-    try
-    {
-        double total_length = 0.0;
-        _pathLength = 6;
-        //find waypoints distance
-        if(_waypointsDist <= 0.0)
-        {        
-            double gap_x = totalPathMsg->poses[1].pose.position.x - totalPathMsg->poses[0].pose.position.x;
-            double gap_y = totalPathMsg->poses[1].pose.position.y - totalPathMsg->poses[0].pose.position.y;
-            _waypointsDist = sqrt(gap_x*gap_x + gap_y*gap_y);             
-        }                       
-
-        // Find the nearst point for robot position
-        int min_idx = 0; 
-        int min_val = 100; // why double is wrong?        
-        int N = totalPathMsg->poses.size(); // Number of waypoints        
-        const double px = odom.pose.pose.position.x; //pose: odom frame
-        const double py = odom.pose.pose.position.y;
-        const double ptheta = odom.pose.pose.position.y;
-        
-        double dx, dy; // difference distance
-        double pre_yaw = 0;
-        double roll, pitch, yaw = 0;
-
-        
-        for(int i = 0; i < N; i++) 
-        {
-            dx = totalPathMsg->poses[i].pose.position.x - px;
-            dy = totalPathMsg->poses[i].pose.position.y - py;
-                    
-            tf::Quaternion q(
-                totalPathMsg->poses[i].pose.orientation.x,
-                totalPathMsg->poses[i].pose.orientation.y,
-                totalPathMsg->poses[i].pose.orientation.z,
-                totalPathMsg->poses[i].pose.orientation.w);
-            tf::Matrix3x3 m(q);
-            m.getRPY(roll, pitch, yaw);
-
-            if(abs(pre_yaw - yaw) > 5)
-            {
-                cout << "abs(pre_yaw - yaw)" << abs(pre_yaw - yaw) << endl;
-                pre_yaw = yaw;
-            }
-       
-            if(min_val > sqrt(dx*dx + dy*dy))
-            {
-                min_val = sqrt(dx*dx + dy*dy);
-                min_idx = i;
-
-                if(i < N * 0.02)
-                    min_idx = N - 100; //for smoothing about init position
-            }
-        }
-
-        for(int i = min_idx; i < N ; i++)
-        {
-            if(total_length > _pathLength)
-                break;
-            
-            _tf_listener.transformPose(_odom_frame, ros::Time(0) , 
-                                            totalPathMsg->poses[i], _map_frame, tempPose);                     
-            mpc_path.poses.push_back(tempPose);                          
-            total_length = total_length + _waypointsDist;           
-        }   
-        
-        // Connect the end of path to the front
-        if(total_length < _pathLength )
-        {
-            for(int i = 0; i < N ; i++)
-            {
-                if(total_length > _pathLength)                
-                    break;
-                _tf_listener.transformPose(_odom_frame, ros::Time(0) , 
-                                                totalPathMsg->poses[i], _map_frame, tempPose);                     
-                mpc_path.poses.push_back(tempPose);                          
-                total_length = total_length + _waypointsDist;    
-            }
-        }  
-
-        if(mpc_path.poses.size() >= _pathLength )
-        {
-            _odom_path = mpc_path; // Path waypoints in odom frame
-            _path_computed = true;
-            // publish odom path
-            mpc_path.header.frame_id = _odom_frame;
-            mpc_path.header.stamp = ros::Time::now();
-            _pub_odompath.publish(mpc_path);
-        }
-        else
-        {
-            cout << "Failed to path generation" << endl;
-            _waypointsDist = -1;
-        }       
-    }
-    catch(tf::TransformException &ex)
-    {
-        ROS_ERROR("%s",ex.what());
-        ros::Duration(1.0).sleep();
-    }
-    */
 }
 
 // CallBack: Update path waypoints (conversion to odom frame)
 void MPCNode::pathCB(const nav_msgs::Path::ConstPtr& pathMsg)
 {
+    // ROS_INFO("[MPC_Node::pathCB] path received!!!");
+    // ROS_INFO("[MPC_Node::pathCB], pathMsg size= %d", (int)pathMsg->poses.size());
     
     if(_goal_received && !_goal_reached)
-    {    
-        cout << "[MPC_Node::pathCB] PathCB condition" << endl;
+    {   
+        if (_debug_info && (_debug_level >=2)){
+            cout << "[MPC_Node::pathCB] PathCB compute" << endl;
+        }
+
+        // Initiate odom_path to store local_trajectory
         nav_msgs::Path odom_path = nav_msgs::Path();
         try
         {
@@ -475,10 +318,14 @@ void MPCNode::pathCB(const nav_msgs::Path::ConstPtr& pathMsg)
                 odom_path.header.frame_id = _odom_frame;
                 odom_path.header.stamp = ros::Time::now();
                 _pub_odompath.publish(odom_path);
+                if (_debug_info && (_debug_level >=2)){
+                    cout << "[MPC_Node::pathCB] Generated path!!!" << endl;
+                }
             }
-            else
-            {
-                cout << "[MPC_Node::pathCB] Failed to path generation" << endl;
+            else{   
+                if (_debug_info && (_debug_level >=2)){
+                    cout << "[MPC_Node::pathCB] Failed to generate path!!!" << endl;
+                }
                 _waypointsDist = -1;
             }
             //DEBUG            
@@ -488,6 +335,7 @@ void MPCNode::pathCB(const nav_msgs::Path::ConstPtr& pathMsg)
         }
         catch(tf::TransformException &ex)
         {
+            ROS_ERROR("[MPC_Node::pathCB] PathCB condition ERROR");
             ROS_ERROR("%s",ex.what());
             ros::Duration(1.0).sleep();
         }
@@ -502,7 +350,19 @@ void MPCNode::goalCB(const geometry_msgs::PoseStamped::ConstPtr& goalMsg)
     _goal_received = true;
     _goal_reached = false;
     _onetime_noti = true;
-    ROS_INFO("[MPC_Node::goalCB] Goal Received :goalCB!");
+    if (_debug_info && (_debug_level >=1)){
+        cout << "[MPC_Node::goalCB] Goal Received\n";
+        tf::Pose pose;
+        tf::poseMsgToTF(_odom.pose.pose, pose);
+        std::printf("Moving: (%.3f, %.3f, %.3f) -> (%.3f, %.3f, %.3f)\n",
+                                _odom.pose.pose.position.x,
+                                _odom.pose.pose.position.y,
+                                tf::getYaw(pose.getRotation()), 
+                                _goal_pos.x,
+                                _goal_pos.y,
+                                _goal_pos.z);
+    }
+    
 }
 
 
@@ -521,7 +381,7 @@ void MPCNode::amclCB(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& a
             _path_computed = false;
             _onetime_noti = true;
             ROS_INFO("[MPC_Node::amclCB] Goal Reached ! dist2goal=%.3f", dist2goal);
-            ROS_INFO("[MPC_Node::amclCB] States: _goal_received=%d, _goal_reached=%d, _path_computed=%d", _goal_received, _goal_reached, _path_computed);
+            ROS_INFO("[MPC_Node::amclCB] _goal_received=%d, _goal_reached=%d, _path_computed=%d", _goal_received, _goal_reached, _path_computed);
         }
     }
 }
@@ -531,7 +391,11 @@ void MPCNode::amclCB(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& a
 void MPCNode::controlLoopCB(const ros::TimerEvent&)
 {          
     if(_goal_received && !_goal_reached && _path_computed ) //received goal & goal not reached    
-    {    
+    {   
+        if (_debug_info && (_debug_level >=1)){
+            std::cout << "[MPC_Node::controlLoopCB] Compute control command\n";
+        }
+
         nav_msgs::Odometry odom = _odom; 
         nav_msgs::Path odom_path = _odom_path;   
 
@@ -546,6 +410,14 @@ void MPCNode::controlLoopCB(const ros::TimerEvent&)
         const double w = _w; // steering -> w
         //const double steering = _steering;  // radian
         const double throttle = _throttle; // accel: >0; brake: <0
+
+        if (_debug_info && (_debug_level >=1)){
+            cout << "[MPC_Node::controlLoopCB] x    : " << px << endl;
+            cout << "[MPC_Node::controlLoopCB] y    : " << py << endl;
+            cout << "[MPC_Node::controlLoopCB] v    : " << v << endl;
+            cout << "[MPC_Node::controlLoopCB] theta: " << theta << endl;
+        }
+
         const double dt = _dt;
         //const double Lf = _Lf;
 
@@ -591,8 +463,11 @@ void MPCNode::controlLoopCB(const ros::TimerEvent&)
         }
         
         // Solve MPC Problem
+        ros::Time begin = ros::Time::now();
         vector<double> mpc_results = _mpc.Solve(state, coeffs);
-              
+        ros::Time end = ros::Time::now();
+        uint32_t solving_time = (end.sec * 1000 + end.nsec/1000000) - (begin.nsec/1000000 + begin.sec*1000);
+        std::printf("[navMPCNode::controlLoopCB] Solving time: %.3f sec\n", solving_time/1000.);
         // MPC result (all described in car frame), output = (acceleration, w)        
         _w = mpc_results[0]; // radian/sec, angular velocity
         _throttle = mpc_results[1]; // acceleration
@@ -602,14 +477,10 @@ void MPCNode::controlLoopCB(const ros::TimerEvent&)
         if(_speed <= 0.0)
             _speed = 0.0;
 
-        if(_debug_info)
+        if(_debug_info && (_debug_level >=2))
         {
-            cout << "\n\nDEBUG" << endl;
             cout << "[MPC_Node::controlLoopCB] theta    : " << theta << endl;
             cout << "[MPC_Node::controlLoopCB] v        : " << v << endl;
-            //cout << "odom_path: \n" << odom_path << endl;
-            //cout << "x_points: \n" << x_veh << endl;
-            //cout << "y_points: \n" << y_veh << endl;
             cout << "[MPC_Node::controlLoopCB] coeffs   : " << coeffs << endl;
             cout << "[MPC_Node::controlLoopCB] _w       : " << _w << endl;
             cout << "[MPC_Node::controlLoopCB] _throttle: " << _throttle << endl;
@@ -659,6 +530,11 @@ void MPCNode::controlLoopCB(const ros::TimerEvent&)
     // publish general cmd_vel 
     if(_pub_twist_flag)
     {
+        if(_debug_info && (_debug_level >=1))
+        {
+            cout << "[MPC_Node::controlLoopCB] _speed   : " << _speed << endl;
+            cout << "[MPC_Node::controlLoopCB] w        : " << _w << endl;
+        }
         _twist_msg.linear.x  = _speed; 
         _twist_msg.angular.z = _w;
         _pub_twist.publish(_twist_msg);
