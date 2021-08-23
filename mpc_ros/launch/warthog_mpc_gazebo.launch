@@ -2,10 +2,14 @@
 
     <!--  ************** Global Parameters ***************  -->
     <param name="use_sim_time" value="true"/>
+
+    <arg name="plot"        default="true" />
+    <arg name="plot_states" default="true" />
+
     <arg name="controller"  default="mpc"           doc="opt: dwa, mpc, nav_mpc, pure_pursuit"/> 
     <arg name="model"       default="warthog_bot"   doc="opt: warthog_bot, serving_bot"/>
     <arg name="planner"     default="mpc"           doc="dwa, mpc, nav_mpc" />
-    <arg name="tf_prefix"    default=""/> 
+    <arg name="tf_prefix"   default=""/> 
 
     <!--  ************** GAZEBO Simulator ***************  -->
     <arg name="x_pos" default="0.0"/>
@@ -17,7 +21,6 @@
     <arg name="gui" default="false"/>
 
     <!--  ************** Robot model ***************  -->
-    <param name="robot_description" command="$(find xacro)/xacro.py $(find serving_description)/urdf/serving.urdf.xacro" if="$(eval model == 'serving_bot')"/>
     <param name="robot_description" command="$(find xacro)/xacro.py $(find warthog_description)/urdf/warthog.urdf.xacro" if="$(eval model == 'warthog_bot')"/>
 
     <!--include file="$(find gazebo_ros)/launch/empty_world.launch">
@@ -98,4 +101,5 @@
 
     <!--  ************** Visualisation **************  -->
     <node name="rviz" pkg="rviz" type="rviz" args="-d $(find mpc_ros)/params/total_rviz_navigation.rviz"/>
+    
 </launch>

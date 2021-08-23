@@ -38,3 +38,16 @@ roslaunch mpc_ros warthog_mpc_gazebo.launch
 ```
 It can be selected with DWA, MPC, Pure persuit according to 'controller' argument.
 
+### Extras
+
+Update rosdep
+```
+rosdep update
+rosdep install --rosdistro melodic --ignore-src --from-paths src
+
+```
+
+Handy make pkg
+```
+catkin_create_pkg control_gui rospy roscpp std_msgs nav_msgs geometry_msgs visualization_msgs ackermann_msgs tf costmap_2d dynamic_reconfigure pluginlib message_generation move_base base_local_planner
+```

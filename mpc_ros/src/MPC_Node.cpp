@@ -85,7 +85,7 @@ MPCNode::MPCNode()
     pn.param("debug_info", _debug_info, true);
     pn.param("debug_level", _debug_level, 0);
     pn.param("delay_mode", _delay_mode, true);
-    pn.param("max_speed", _max_speed, 0.50); // unit: m/s
+    pn.param("max_speed", _max_speed, 2.50); // unit: m/s
     pn.param("waypoints_dist", _waypointsDist, -1.0); // unit: m
     pn.param("path_length", _pathLength, 8.0); // unit: m
     pn.param("goal_radius", _goalRadius, 0.5); // unit: m
@@ -97,7 +97,7 @@ MPCNode::MPCNode()
     pn.param("mpc_steps", _mpc_steps, 20.0);
 
     pn.param("mpc_ref_cte", _ref_cte, 0.0);
-    pn.param("mpc_ref_vel", _ref_vel, 1.0);
+    pn.param("mpc_ref_vel", _ref_vel, 3.0);
     pn.param("mpc_ref_etheta", _ref_etheta, 0.0);
 
     pn.param("mpc_w_cte", _w_cte, 5000.0);
@@ -467,7 +467,11 @@ void MPCNode::controlLoopCB(const ros::TimerEvent&)
         vector<double> mpc_results = _mpc.Solve(state, coeffs);
         ros::Time end = ros::Time::now();
         uint32_t solving_time = (end.sec * 1000 + end.nsec/1000000) - (begin.nsec/1000000 + begin.sec*1000);
-        std::printf("[navMPCNode::controlLoopCB] Solving time: %.3f sec\n", solving_time/1000.);
+        cout << "[MPCNode::controlLoopCB] Solving time: " << solving_time << endl;
+        // std::printf("[MPCNode::controlLoopCB] (%.3f, %.3f) -> (%.3f, %.3f)\n",  odom.pose.pose.position.x,
+                                                                                // odom.pose.pose.position.y,
+                                                                                // _goal_pos.x,
+                                                                                // _goal_pos.y );
         // MPC result (all described in car frame), output = (acceleration, w)        
         _w = mpc_results[0]; // radian/sec, angular velocity
         _throttle = mpc_results[1]; // acceleration
@@ -511,8 +515,7 @@ void MPCNode::controlLoopCB(const ros::TimerEvent&)
         _w = 0;
         if(_goal_reached && !_goal_received && _onetime_noti)
         {
-            ROS_INFO("[MPC_Node::controlLoopCB] Goal Reached !");
-            ROS_INFO("[MPC_Node::controlLoopCB] States: _goal_received=%d, _goal_reached=%d, _path_computed=%d", _goal_received, _goal_reached, _path_computed);
+            ROS_INFO("[MPC_Node::controlLoopCB] Goal Reached!\n\n\n");
             _onetime_noti = false;
         }
     }
