@@ -3,9 +3,12 @@
 #include <math.h>
 
 #include "ros/ros.h"
+
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/Twist.h>
+#include <geometry_msgs/TwistStamped.h>
+
 #include <tf/transform_listener.h>
 // #include <tf/transform_datatypes.h>
 #include <nav_msgs/Path.h>
@@ -32,7 +35,8 @@ class MPCNode
     private:
         ros::NodeHandle _nh;
         ros::Subscriber _sub_odom, _sub_gen_path, _sub_path, _sub_goal, _sub_amcl;
-        ros::Publisher _pub_globalpath,_pub_odompath, _pub_twist, _pub_mpctraj;
+        ros::Publisher _pub_globalpath,_pub_odompath, _pub_twist, _pub_mpctraj, _pub_twist_stmp;
+        
         ros::Publisher _pub_ackermann;
         ros::Timer _timer1;
         tf::TransformListener _tf_listener;
@@ -42,6 +46,7 @@ class MPCNode
         nav_msgs::Path _odom_path, _mpc_traj; 
         //ackermann_msgs::AckermannDriveStamped _ackermann_msg;
         geometry_msgs::Twist _twist_msg;
+        geometry_msgs::TwistStamped _twist_stmp_msg;
 
         string _globalPath_topic, _goal_topic;
         string _map_frame, _odom_frame, _car_frame;
@@ -156,7 +161,8 @@ MPCNode::MPCNode()
     _pub_mpctraj   = _nh.advertise<nav_msgs::Path>("/mpc_trajectory", 1);// MPC trajectory output
     //_pub_ackermann = _nh.advertise<ackermann_msgs::AckermannDriveStamped>("/ackermann_cmd", 1);
     if(_pub_twist_flag)
-        _pub_twist = _nh.advertise<geometry_msgs::Twist>("/cmd_vel", 1); //for stage (Ackermann msg non-supported)
+        _pub_twist      = _nh.advertise<geometry_msgs::Twist>("/cmd_vel", 1); //for stage (Ackermann msg non-supported)
+        _pub_twist_stmp = _nh.advertise<geometry_msgs::TwistStamped>("/cmd_vel_stmp", 1);
     
     //Timer
     _timer1 = _nh.createTimer(ros::Duration((1.0)/_controller_freq), &MPCNode::controlLoopCB, this); // 10Hz //*****mpc
@@ -541,6 +547,13 @@ void MPCNode::controlLoopCB(const ros::TimerEvent&)
         _twist_msg.linear.x  = _speed; 
         _twist_msg.angular.z = _w;
         _pub_twist.publish(_twist_msg);
+
+
+        _twist_stmp_msg.twist = _twist_msg;
+        _twist_stmp_msg.header.frame_id = "cmd_vel_stamped";
+        _twist_stmp_msg.header.stamp = ros::Time::now();
+        _pub_twist_stmp.publish(_twist_stmp_msg);
+
     }
     
 }

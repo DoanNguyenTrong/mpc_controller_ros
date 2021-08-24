@@ -3,8 +3,8 @@
     <!--  ************** Global Parameters ***************  -->
     <param name="use_sim_time" value="true"/>
 
-    <arg name="plot"        default="true" />
-    <arg name="plot_states" default="true" />
+    <arg name="plot_control" default="false" />
+    <arg name="plot_states"  default="false" />
 
     <arg name="controller"  default="mpc"           doc="opt: dwa, mpc, nav_mpc, pure_pursuit"/> 
     <arg name="model"       default="warthog_bot"   doc="opt: warthog_bot, serving_bot"/>
@@ -102,4 +102,12 @@
     <!--  ************** Visualisation **************  -->
     <node name="rviz" pkg="rviz" type="rviz" args="-d $(find mpc_ros)/params/total_rviz_navigation.rviz"/>
     
+
+    <!-- **************** Plot ocp results ************** -->
+    <node name="control_plot" pkg="mpc_ros" type="mpc_plot.py" output="screen" if="$(arg plot_control)">
+        <param name="control_topic" value="/cmd_vel_stmp"/>
+        <param name="plot_rate" value="5"/>
+        <param name="plot_states" value="$(arg plot_states)"/>
+    </node>
+
 </launch>
