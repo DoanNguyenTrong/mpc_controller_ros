@@ -49,5 +49,5 @@ rosdep install --rosdistro melodic --ignore-src --from-paths src
 
 Handy make pkg
 ```
-catkin_create_pkg control_gui rospy roscpp std_msgs nav_msgs geometry_msgs visualization_msgs ackermann_msgs tf costmap_2d dynamic_reconfigure pluginlib message_generation move_base base_local_planner
+catkin_create_pkg warthog_mpc rospy roscpp std_msgs nav_msgs geometry_msgs visualization_msgs ackermann_msgs tf costmap_2d dynamic_reconfigure pluginlib message_generation move_base base_local_planner
 ```

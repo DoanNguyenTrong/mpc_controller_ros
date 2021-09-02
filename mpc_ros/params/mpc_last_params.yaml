@@ -1,5 +1,3 @@
-
-
 MPCPlannerROS:
 # Robot Configuration Parameters
   map_frame: "map"

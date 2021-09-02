@@ -14,14 +14,14 @@
     <!--  ************** GAZEBO Simulator ***************  -->
     <arg name="x_pos" default="0.0"/>
     <arg name="y_pos" default="0.0"/>
-    <arg name="z_pos" default="0.0"/>
+    <arg name="z_pos" default="1.0"/>
     <arg name="roll" default="0"/>
     <arg name="pitch" default="0"/>
     <arg name="yaw" default="0"/> <!-- -1.507 -->
     <arg name="gui" default="false"/>
 
     <!--  ************** Robot model ***************  -->
-    <param name="robot_description" command="$(find xacro)/xacro.py $(find warthog_description)/urdf/warthog.urdf.xacro" if="$(eval model == 'warthog_bot')"/>
+    <param name="robot_description" command="$(find xacro)/xacro $(find warthog_description)/urdf/warthog.urdf.xacro" if="$(eval model == 'warthog_bot')"/>
 
     <!--include file="$(find gazebo_ros)/launch/empty_world.launch">
         <arg name="world_name" value="$(find mpc_ros)/worlds/sq_world.world"/>
@@ -41,7 +41,7 @@
 
 
     <!--  ************** Map **************  -->
-    <node name="map_server" pkg="map_server" type="map_server" args="$(find warthog_gazebo)/map/map.yaml" output="screen">
+    <node name="map_server" pkg="map_server" type="map_server" args="$(find warthog_gazebo)/map/vineyard_map2.yaml" output="screen">
         <param name="frame_id" value="map"/>
     </node>
 
@@ -51,9 +51,9 @@
     <node pkg="amcl" type="amcl" name="amcl" output="screen">
         <!--rosparam file="$(find mpc_ros)/params/amcl_params.yaml" command="load" /-->
         <rosparam file="$(find mpc_local_planner_examples)/cfg/amcl_params_w.yaml" command="load" />
-        <!--param name="initial_pose_x"            value="$(arg x_pos)"/>
+        <param name="initial_pose_x"            value="$(arg x_pos)"/>
         <param name="initial_pose_y"            value="$(arg y_pos)"/>
-        <param name="initial_pose_a"            value="$(arg yaw)"/-->
+        <param name="initial_pose_a"            value="$(arg yaw)"/>
     </node>
 
     <!--  ************** Navigation ***************  -->    
