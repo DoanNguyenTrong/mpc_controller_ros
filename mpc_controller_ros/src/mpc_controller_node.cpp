@@ -608,12 +608,11 @@ void MPCNode::controlLoopCB(const ros::TimerEvent&)
     }
 
     // publish general cmd_vel 
-    if(is_pub_twist_)
+    if(is_pub_twist_ && _goal_received &&!_goal_reached)
     {
-        if((debug_level_ >=1))
-        {
-            cout << "[MPC_Node::controlLoopCB] _speed   : " << _speed << endl;
-            cout << "[MPC_Node::controlLoopCB] w        : " << _w << endl;
+        if( debug_level_ >=1 )
+        {   
+            ROS_INFO("[MPC_Node::controlLoopCB] cmd={%.3f, %.3f}", _speed, _w);
         }
         
         _publishTwist();
@@ -626,14 +625,16 @@ void MPCNode::controlLoopCB(const ros::TimerEvent&)
 int main(int argc, char **argv)
 {
     //Initiate ROS
-    ros::init(argc, argv, "MPC_Node");
+    ros::init(argc, argv, "mpc_controller_node");
     ros::NodeHandle nh;
     ros::NodeHandle nh_priv("~");
 
     MPCNode mpc_node(nh, nh_priv);
     
-    ros::AsyncSpinner spinner(mpc_node.num_thread()); // Use multi threads
+    // Use multi threads
+    ros::AsyncSpinner spinner( (mpc_node.num_thread()>=2)?mpc_node.num_thread():2 );
     spinner.start();
+    
     ros::waitForShutdown();
     return 0;
 }
