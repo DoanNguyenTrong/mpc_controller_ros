@@ -110,8 +110,8 @@ class MPCNode
         // nav_msgs::Path _gen_path;
         
 
-        double          polyeval(Eigen::VectorXd , double );
-        Eigen::VectorXd polyfit(Eigen::VectorXd , Eigen::VectorXd , int );
+        double          _polyeval(Eigen::VectorXd , double );
+        Eigen::VectorXd _polyfit(Eigen::VectorXd , Eigen::VectorXd , int );
 
 
         // Callback func.
@@ -121,7 +121,7 @@ class MPCNode
 
         double  _getYaw(const geometry_msgs::Pose&);
         void    _mpcCompute();
-        void    _publishTwist();
+        void    _publishTwist(double, double);
         void    _printParams();
 
         void controlLoopCB(const ros::TimerEvent&);
@@ -245,7 +245,7 @@ MPCNode::MPCNode(ros::NodeHandle nh, ros::NodeHandle nh_priv):
 
 
 // Evaluate a polynomial.
-double MPCNode::polyeval(Eigen::VectorXd coeffs, double x) 
+double MPCNode::_polyeval(Eigen::VectorXd coeffs, double x) 
 {
     double result = 0.0;
     for (int i = 0; i < coeffs.size(); i++) 
@@ -259,7 +259,7 @@ double MPCNode::polyeval(Eigen::VectorXd coeffs, double x)
 // Fit a polynomial.
 // Adapted from
 // https://github.com/JuliaMath/Polynomials.jl/blob/master/src/Polynomials.jl#L676-L716
-Eigen::VectorXd MPCNode::polyfit(Eigen::VectorXd xvals, Eigen::VectorXd yvals, int order) 
+Eigen::VectorXd MPCNode::_polyfit(Eigen::VectorXd xvals, Eigen::VectorXd yvals, int order) 
 {
     assert(xvals.size() == yvals.size());
     assert(order >= 1 && order <= xvals.size() - 1);
@@ -493,9 +493,9 @@ void MPCNode::_mpcCompute(){
     }
     
     // polinomial trajectory from waypoints
-    auto coeffs         = polyfit(x_veh, y_veh, 3); 
+    auto coeffs         = _polyfit(x_veh, y_veh, 3); 
 
-    const double cte    = polyeval(coeffs, 0.0);
+    const double cte    = _polyeval(coeffs, 0.0);
     const double etheta = atan(coeffs[1]);
 
     VectorXd state(6);
@@ -549,11 +549,11 @@ void MPCNode::_mpcCompute(){
     
 }
 
-void MPCNode::_publishTwist(){
+void MPCNode::_publishTwist(double speed, double w){
 
     // Twist
-    _twist_msg.linear.x  = _speed; 
-    _twist_msg.angular.z = _w;
+    _twist_msg.linear.x  = speed; 
+    _twist_msg.angular.z = w;
     twist_cmd_pub_.publish(_twist_msg);
 
     // TwistStamped
@@ -572,34 +572,48 @@ void MPCNode::controlLoopCB(const ros::TimerEvent&)
         if ((debug_level_ >=1)){
             std::cout << "[MPC_Node::controlLoopCB] Compute control command\n";
         }
+        double angle = _getYaw(_odom_path.poses[0].pose);
+        double theta = _getYaw(_odom.pose.pose);
 
-        // Solve MPC
-        _mpcCompute();
-        
-        
-        // Display the MPC predicted trajectory
-        _mpc_traj = nav_msgs::Path();
-        _mpc_traj.header.frame_id = car_frame_; // points in car coordinate        
-        _mpc_traj.header.stamp = ros::Time::now();
-        for(int i=0; i<mpc_solver_.mpc_x.size(); i++)
-        {
-            geometry_msgs::PoseStamped tempPose;
-            tempPose.header = _mpc_traj.header;
-            tempPose.pose.position.x = mpc_solver_.mpc_x[i];
-            tempPose.pose.position.y = mpc_solver_.mpc_y[i];
-            tempPose.pose.orientation.w = 1.0;
-            _mpc_traj.poses.push_back(tempPose); 
-        }     
-        // publish the mpc trajectory
-        mpc_traj_pub_.publish(_mpc_traj);
+
+        // WARN
+        if ( abs(angle - theta) > 1.0 ){
+            // Inplace rotation
+            _speed = 0.0;
+            _w = (angle - theta)/1.0;
+        }
+        else{
+            // Solve MPC
+            _mpcCompute();
+            
+            
+            // Display the MPC predicted trajectory
+            _mpc_traj = nav_msgs::Path();
+            _mpc_traj.header.frame_id = car_frame_; // points in car coordinate        
+            _mpc_traj.header.stamp = ros::Time::now();
+            for(int i=0; i<mpc_solver_.mpc_x.size(); i++)
+            {
+                geometry_msgs::PoseStamped tempPose;
+                tempPose.header = _mpc_traj.header;
+                tempPose.pose.position.x = mpc_solver_.mpc_x[i];
+                tempPose.pose.position.y = mpc_solver_.mpc_y[i];
+                tempPose.pose.orientation.w = 1.0;
+                _mpc_traj.poses.push_back(tempPose); 
+            }     
+            // publish the mpc trajectory
+            mpc_traj_pub_.publish(_mpc_traj);
+
+        }
 
     }
     else
-    {
+    {   
+        // Zero command
         _throttle   = 0.0;
         _speed      = 0.0;
         _w          = 0.0;
 
+       
         if(_goal_reached && !_goal_received && _onetime_noti)
         {
             ROS_INFO("[MPC_Node::controlLoopCB] Goal Reached!\n\n\n");
@@ -615,7 +629,7 @@ void MPCNode::controlLoopCB(const ros::TimerEvent&)
             ROS_INFO("[MPC_Node::controlLoopCB] cmd={%.3f, %.3f}", _speed, _w);
         }
         
-        _publishTwist();
+        _publishTwist(_speed, _w);
     }
     
 }
