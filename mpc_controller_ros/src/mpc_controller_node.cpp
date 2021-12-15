@@ -1,6 +1,7 @@
 #include <iostream>
 #include <map>
 #include <math.h>
+#include <chrono>
 
 #include "ros/ros.h"
 
@@ -56,7 +57,8 @@ class MPCNode
 
         string                  path_topic_,
                                 odom_topic_, 
-                                goal_topic_;
+                                goal_topic_,
+                                cmd_topic_;
         string                  map_frame_, 
                                 odom_frame_, 
                                 car_frame_;
@@ -127,6 +129,11 @@ class MPCNode
         void controlLoopCB(const ros::TimerEvent&);
         void makeGlobalPath(const nav_msgs::Odometry );
 
+        inline double  _fix_angle(double angle){
+            angle = (angle > M_PI)? -2*M_PI + angle: angle;
+            angle = (angle < -M_PI)? 2*M_PI -angle: angle;
+            return angle;
+        }
         
 
 }; // end of class
@@ -179,6 +186,7 @@ MPCNode::MPCNode(ros::NodeHandle nh, ros::NodeHandle nh_priv):
     nh_priv.param<std::string>("odom_topic"        , odom_topic_        , "odom" );
     nh_priv.param<std::string>("path_planner_topic", path_topic_, "/move_base/TrajectoryPlannerROS/global_plan" );
     nh_priv.param<std::string>("goal_topic", goal_topic_, "/move_base_simple/goal" );
+    nh_priv.param<std::string>("control_topic", cmd_topic_, "/cmd_vel" );
     
     nh_priv.param<std::string>("map_frame" , map_frame_, "map" ); //*****for mpc, "odom"
     nh_priv.param<std::string>("odom_frame", odom_frame_, "odom");
@@ -201,8 +209,8 @@ MPCNode::MPCNode(ros::NodeHandle nh, ros::NodeHandle nh_priv):
     //_pub_ackermann = nh.advertise<ackermann_msgs::AckermannDriveStamped>("/ackermann_cmd", 1);
     
     if(is_pub_twist_)
-        twist_cmd_pub_      = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 1); //for stage (Ackermann msg non-supported)
-        twist_stmp_pub_ = nh.advertise<geometry_msgs::TwistStamped>("/cmd_vel_stmp", 1);
+        twist_cmd_pub_      = nh.advertise<geometry_msgs::Twist>(cmd_topic_, 5); //for stage (Ackermann msg non-supported)
+        twist_stmp_pub_ = nh.advertise<geometry_msgs::TwistStamped>(cmd_topic_+ "_stmp", 15);
     
     //Timer
     _timer1 = nh.createTimer(ros::Duration(_dt), &MPCNode::controlLoopCB, this); // 10Hz //*****mpc
@@ -341,7 +349,14 @@ void MPCNode::goalCB(const geometry_msgs::PoseStamped::ConstPtr& goalMsg){
 */
 void MPCNode::odomCB(const nav_msgs::Odometry::ConstPtr& odomMsg)
 {
+    
     _odom = *odomMsg;
+    // if(debug_level_ >=3){
+    //     ROS_INFO("[MPCNode::odomCB] {x,y,theta}={%.3f, %.3f, %.3f}", _odom.pose.pose.position.x,
+    //                                                     _odom.pose.pose.position.y,
+    //                                                     _getYaw(_odom.pose.pose));
+    // }
+
     if(_goal_received)
     {   // Compute distance to goal and stop if reached [< tolerance]
         double car2goal_x = _goal_pos.pose.position.x - _odom.pose.pose.position.x;
@@ -466,10 +481,11 @@ void MPCNode::_mpcCompute(){
     const double throttle = _throttle; // accel: >0; brake: <0
 
     if ((debug_level_ >=1)){
-        cout << "[MPC_Node::_mpcCompute] x    : " << px << endl;
-        cout << "[MPC_Node::_mpcCompute] y    : " << py << endl;
-        cout << "[MPC_Node::_mpcCompute] v    : " << v << endl;
-        cout << "[MPC_Node::_mpcCompute] theta: " << theta << endl;
+        printf("[MPC_Node::_mpcCompute] odom {%.3f, %.3f, %.3f, %.3f}\n",odom.pose.pose.orientation.x,
+                                                                        odom.pose.pose.orientation.y,
+                                                                        odom.pose.pose.orientation.z,
+                                                                        odom.pose.pose.orientation.w );
+        printf("[MPC_Node::_mpcCompute] {x, y, v, theta} =  {%.3f, %.3f, %.3f, %.3f}\n",px, py, v, theta );
     }
 
 
@@ -518,13 +534,17 @@ void MPCNode::_mpcCompute(){
     }
     
     // Start solving MPC
-    ros::Time begin = ros::Time::now();
+    // ros::Time begin = ros::Time::now();
+    std::chrono::time_point<std::chrono::system_clock> start, end;
+    start = std::chrono::system_clock::now();
     vector<double> mpc_results = mpc_solver_.Solve(state, coeffs);
     // End solving MPC
-    ros::Time end = ros::Time::now();
+    end = std::chrono::system_clock::now();
+    // ros::Time end = ros::Time::now();
 
-    double solving_time = (end.sec - begin.sec) + (end.nsec - begin.nsec)/1000000000.0;
-    ROS_INFO("[MPCNode::_mpcCompute] Solving time: %.3f", solving_time);
+    // double solving_time = (end.sec - begin.sec) + (end.nsec - begin.nsec)/1000000000.0;
+    std::chrono::duration<double> solving_time = end - start;
+    printf("[MPCNode::_mpcCompute] Solving time: %.6f\n", solving_time.count());
 
 
     // MPC result (all described in car frame), output = (acceleration, w)        
@@ -569,18 +589,19 @@ void MPCNode::controlLoopCB(const ros::TimerEvent&)
 {          
     if(_goal_received && !_goal_reached && _path_computed ) //received goal & goal not reached    
     {   
-        if ((debug_level_ >=1)){
-            std::cout << "[MPC_Node::controlLoopCB] Compute control command\n";
-        }
+        
         double angle = _getYaw(_odom_path.poses[0].pose);
         double theta = _getYaw(_odom.pose.pose);
-
-
+        double angle_err = _fix_angle(angle - theta);
+        
+        if ((debug_level_ >=1)){
+            printf("[MPC_Node::controlLoopCB] angle:theta {%.3f: %.3f} err=%.3f.\n", angle, theta, angle_err);
+        }
         // WARN
-        if ( abs(angle - theta) > 1.0 ){
+        if ( abs(angle_err) > 1.0 ){
             // Inplace rotation
             _speed = 0.0;
-            _w = (angle - theta)/1.0;
+            _w = 0.1*(angle_err)/abs(angle_err) ;
         }
         else{
             // Solve MPC
@@ -626,7 +647,7 @@ void MPCNode::controlLoopCB(const ros::TimerEvent&)
     {
         if( debug_level_ >=1 )
         {   
-            ROS_INFO("[MPC_Node::controlLoopCB] cmd={%.3f, %.3f}", _speed, _w);
+            printf("[MPC_Node::controlLoopCB] cmd={%.3f, %.3f}\n", _speed, _w);
         }
         
         _publishTwist(_speed, _w);

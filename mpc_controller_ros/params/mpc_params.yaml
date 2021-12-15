@@ -1,27 +1,40 @@
-num_threads: 2
+# Topics
+odom_topic: "/control/odometry/filtered_global"
+# path_planner_topic: "/move_base/TrajectoryPlannerROS/global_plan"
+path_planner_topic: "/move_base/GlobalPlanner/plan"
+goal_topic: "/move_base_simple/goal" 
+control_topic: "/mpc/cmd_vel"
+
+
+map_frame: "odom"
+odom_frame: "odom"
+car_frame: "base_link"
+
+
+num_threads: 3
 # Parameters for control loop
 pub_twist_cmd: true
-debug_level: 3 # \in {0,1,2,3}
+debug_level: 0 # \in {0,1,2,3}
 delay_mode: true
-max_speed: 0.5 # unit: m/s 
+max_speed: 0.2 # unit: m/s 
 waypoints_dist: -1.0 # unit: m, set < 0 means computed by node
-path_length: 3.0 # [m]
+path_length: 8.0 # [m]
 goal_tolerance: 0.3 # [m]
-controller_freq: 20
+controller_freq: 10
 
 # Parameter for MPC solver
 mpc_steps: 12.0
 mpc_ref_cte: 0.0
-mpc_ref_vel: 0.5
+mpc_ref_vel: 0.2
 mpc_ref_etheta: 0.0
 mpc_w_cte: 100.0
-mpc_w_etheta: 0000.0
-mpc_w_vel: 1000.0
-mpc_w_angvel: 100.0
+mpc_w_etheta: 200.0
+mpc_w_vel: 100.0
+mpc_w_angvel: 150.0
 mpc_w_angvel_d: 0.0
-mpc_w_accel: 50.0
-mpc_w_accel_d: 0.0
+mpc_w_accel: 100.0
+mpc_w_accel_d: 100.0
 mpc_max_angvel: 1.5 
-mpc_max_throttle: 1.0 # Maximal throttle accel
-mpc_bound_value: 1.0e3 # Bound value for other variables
+mpc_max_throttle: .1 # Maximal throttle accel
+mpc_bound_value: 10.0 # Bound value for other variables
 
