@@ -83,7 +83,9 @@ class MPCNode
                         _w_accel_d, 
                         _max_angvel, 
                         _max_throttle, 
-                        _bound_value;
+                        _bound_value,
+                        
+                        inplace_rotate_vel_;
 
         //double _Lf; 
         double          _dt, 
@@ -162,6 +164,8 @@ MPCNode::MPCNode(ros::NodeHandle nh, ros::NodeHandle nh_priv):
     nh_priv.param("controller_freq", _controller_freq, 10); // [Hz]
     //pn.param("vehicle_Lf", _Lf, 0.290); // distance between the front of the vehicle and its center of gravity
     _dt = double(1.0/_controller_freq); // time step duration dt in s 
+
+    nh_priv.param("inplace_rotate_vel", inplace_rotate_vel_, 0.15);
 
     //Parameter for MPC solver
     nh_priv.param("mpc_steps", _mpc_steps, 10.0);
@@ -302,6 +306,8 @@ void MPCNode::_printParams(){
     cout << "[MPC_Node::MPC] mpc_dt        : "   << _dt << endl;
 
     cout << "[MPC_Node::MPC] mpc_steps     : "   << _mpc_steps << endl;
+
+    cout << "[MPC_Node::MPC] inplace_rotate_vel: "   << inplace_rotate_vel_ << endl;
 
     cout << "[MPC_Node::MPC] mpc_ref_cte   : "   << _ref_cte << endl;
     cout << "[MPC_Node::MPC] mpc_ref_vel   : "   << _ref_vel << endl;
@@ -601,7 +607,7 @@ void MPCNode::controlLoopCB(const ros::TimerEvent&)
         if ( abs(angle_err) > 1.0 ){
             // Inplace rotation
             _speed = 0.0;
-            _w = 0.1*(angle_err)/abs(angle_err) ;
+            _w = inplace_rotate_vel_*(angle_err)/abs(angle_err) ;
         }
         else{
             // Solve MPC
