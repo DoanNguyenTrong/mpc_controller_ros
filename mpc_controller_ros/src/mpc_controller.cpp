@@ -273,6 +273,9 @@ MPC::MPC()
     _etheta_start  = _cte_start + _mpc_steps;
     _angvel_start = _etheta_start + _mpc_steps;
     _a_start     = _angvel_start + _mpc_steps - 1;
+    
+    n_vars_ = 0;
+    n_constraints_ = 0;
 
 }
 
@@ -301,6 +304,17 @@ void MPC::LoadParams(const std::map<string, double> &params)
         std::cout << "[MPC::loadParams] mpc_max_throttle: "  << _max_throttle << endl;
         std::cout << "[MPC::loadParams] mpc_bound_value : "  << _bound_value << endl;
     }
+
+
+    // Set the number of model variables (includes both states and inputs).
+    // For example: If the state is a 4 element vector, the actuators is a 2
+    // element vector and there are 10 timesteps. The number of variables is:
+    // 4 * 10 + 2 * 9
+    n_vars_ = _mpc_steps * 6 + (_mpc_steps - 1) * 2;
+    // Set the number of constraints
+    n_constraints_ = _mpc_steps * 6;
+
+    mpc_var_init_ = vector<double>(n_vars_);
 }
 
 
@@ -322,34 +336,51 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs)
         std::printf("[MPC::Solve] Coeff          : (%.3f, %.3f, %.3f %.3f)\n", coeffs[0], coeffs[1], coeffs[2], coeffs[3]);
     }
 
-    // Set the number of model variables (includes both states and inputs).
-    // For example: If the state is a 4 element vector, the actuators is a 2
-    // element vector and there are 10 timesteps. The number of variables is:
-    // 4 * 10 + 2 * 9
-    size_t n_vars = _mpc_steps * 6 + (_mpc_steps - 1) * 2;
     
-    // Set the number of constraints
-    size_t n_constraints = _mpc_steps * 6;
 
     // Initial value of the independent variables.
     // SHOULD BE 0 besides initial state.
-    Dvector vars(n_vars);
-    for (int i = 0; i < n_vars; i++) 
-    {
-        vars[i] = 0;
-    }
+    Dvector vars(n_vars_);
+    // for (int i = 0; i < n_vars_; i++) 
+    // {
+    //     vars[i] = 0;
+    // }
 
     // Set the initial variable values
     vars[_x_start] = x;
+    for (int i = _x_start+ 1; i < _y_start - 1; i++){
+        vars[i] = mpc_var_init_[i+1];
+    }
+    vars[_y_start - 1] = vars[_y_start - 2];
+
     vars[_y_start] = y;
+    for (int i = _y_start+ 1; i < _theta_start - 1; i++){
+        vars[i] = mpc_var_init_[i+1];
+    }
+    vars[_theta_start - 1] = vars[_theta_start - 2];
+
     vars[_theta_start] = theta;
-    vars[_v_start] = v;
+    for (int i = _theta_start+ 1; i < _cte_start - 1; i++){
+        vars[i] = mpc_var_init_[i+1];
+    }
+    vars[_cte_start - 1] = vars[_cte_start - 2];
+
     vars[_cte_start] = cte;
+    for (int i = _cte_start+ 1; i < _etheta_start - 1; i++){
+        vars[i] = mpc_var_init_[i+1];
+    }
+    vars[_etheta_start - 1] = vars[_etheta_start - 2];
+
     vars[_etheta_start] = etheta;
+    for (int i = _etheta_start+ 1; i < n_vars_ - 1; i++){
+        vars[i] = mpc_var_init_[i+1];
+    }
+    vars[n_vars_ - 1] = vars[n_vars_ - 2];
+
 
     // Set lower and upper limits for variables.
-    Dvector vars_lowerbound(n_vars);
-    Dvector vars_upperbound(n_vars);
+    Dvector vars_lowerbound(n_vars_);
+    Dvector vars_upperbound(n_vars_);
     
     // Set all non-actuators upper and lowerlimits
     // to the max negative and positive values.
@@ -367,7 +398,7 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs)
         vars_upperbound[i] = _max_angvel;
     }
     // Acceleration/decceleration upper and lower limits
-    for (int i = _a_start; i < n_vars; i++)  
+    for (int i = _a_start; i < n_vars_; i++)  
     {
         vars_lowerbound[i] = -_max_throttle;
         vars_upperbound[i] = _max_throttle;
@@ -376,9 +407,9 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs)
 
     // Lower and upper limits for the constraints
     // Should be 0 besides initial state.
-    Dvector constraints_lowerbound(n_constraints);
-    Dvector constraints_upperbound(n_constraints);
-    for (int i = 0; i < n_constraints; i++)
+    Dvector constraints_lowerbound(n_constraints_);
+    Dvector constraints_upperbound(n_constraints_);
+    for (int i = 0; i < n_constraints_; i++)
     {
         constraints_lowerbound[i] = 0;
         constraints_upperbound[i] = 0;
@@ -441,6 +472,12 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs)
         this->mpc_x.push_back(solution.x[_x_start + i]);
         this->mpc_y.push_back(solution.x[_y_start + i]);
     }
+
+    for (int i = 0; i < n_vars_; i++){
+        this->mpc_var_init_[i] = solution.x[i];
+    }
+    
+
     vector<double> result;
     result.push_back(solution.x[_angvel_start]);
     result.push_back(solution.x[_a_start]);
