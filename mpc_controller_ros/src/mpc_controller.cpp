@@ -347,6 +347,7 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs)
     // }
 
     // Set the initial variable values
+    // Warm start 
     vars[_x_start] = x;
     for (int i = _x_start+ 1; i < _y_start - 1; i++){
         vars[i] = mpc_var_init_[i+1];
@@ -376,6 +377,8 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs)
         vars[i] = mpc_var_init_[i+1];
     }
     vars[n_vars_ - 1] = vars[n_vars_ - 2];
+
+
 
 
     // Set lower and upper limits for variables.
