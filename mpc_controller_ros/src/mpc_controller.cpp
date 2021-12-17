@@ -257,15 +257,17 @@ class FG_eval
 };
 
 
-MPC::MPC() 
-{
+MPC::MPC():
     // Set default value    
-    _mpc_steps = 20;
-    _max_angvel = 3.0; // Maximal angvel radian (~30 deg)
-    _max_throttle = 1.0; // Maximal throttle accel
-    _bound_value  = 1.0e3; // Bound value for other variables
+    _mpc_steps(20),
+    _max_angvel(3.0), // Maximal angvel radian (~30 deg)
+    _max_throttle(1.0), // Maximal throttle accel
+    _bound_value(1.0e3), // Bound value for other variables
+    _x_start     (0),
+    n_vars_ (0),
+    n_constraints_ (0)
 
-    _x_start     = 0;
+{
     _y_start     = _x_start + _mpc_steps;
     _theta_start   = _y_start + _mpc_steps;
     _v_start     = _theta_start + _mpc_steps;
@@ -273,15 +275,15 @@ MPC::MPC()
     _etheta_start  = _cte_start + _mpc_steps;
     _angvel_start = _etheta_start + _mpc_steps;
     _a_start     = _angvel_start + _mpc_steps - 1;
-    
-    n_vars_ = 0;
-    n_constraints_ = 0;
-
 }
 
-void MPC::LoadParams(const std::map<string, double> &params)
+MPC::MPC(const std::map<string, double> &params):
+    _params(params),
+    _mpc_steps(10),
+    _max_angvel(0.5),
+    _max_throttle(0.5),
+    _bound_value(1.0e3)
 {
-    _params = params;
     //Init parameters for MPC object
     _mpc_steps = _params.find("STEPS") != _params.end() ? _params.at("STEPS") : _mpc_steps;
     _max_angvel = _params.find("ANGVEL") != _params.end() ? _params.at("ANGVEL") : _max_angvel;
@@ -297,6 +299,14 @@ void MPC::LoadParams(const std::map<string, double> &params)
     _angvel_start = _etheta_start + _mpc_steps;
     _a_start     = _angvel_start + _mpc_steps - 1;
 
+    assert(_y_start         > 0);
+    assert(_theta_start     > 0);
+    assert(_v_start         > 0);
+    assert(_cte_start       > 0);
+    assert(_etheta_start    > 0);
+    assert(_angvel_start    > 0);
+    assert(_a_start         > 0);
+
     if (_params["DEBUGGING"] && (_params["DEBUG_LEVEL"] >= 2)){
         std::cout << "[MPC::loadParams] MPC Obj parameters updated !! " << endl; 
         std::cout << "[MPC::loadParams] mpc_steps       : "  << _mpc_steps << endl;
@@ -304,8 +314,6 @@ void MPC::LoadParams(const std::map<string, double> &params)
         std::cout << "[MPC::loadParams] mpc_max_throttle: "  << _max_throttle << endl;
         std::cout << "[MPC::loadParams] mpc_bound_value : "  << _bound_value << endl;
     }
-
-
     // Set the number of model variables (includes both states and inputs).
     // For example: If the state is a 4 element vector, the actuators is a 2
     // element vector and there are 10 timesteps. The number of variables is:
@@ -321,13 +329,12 @@ void MPC::LoadParams(const std::map<string, double> &params)
 vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) 
 {
     bool ok = true;
-    size_t i;
     typedef CPPAD_TESTVECTOR(double) Dvector;
-    const double x = state[0];
-    const double y = state[1];
-    const double theta = state[2];
-    const double v = state[3];
-    const double cte = state[4];
+    const double x      = state[0];
+    const double y      = state[1];
+    const double theta  = state[2];
+    const double v      = state[3];
+    const double cte    = state[4];
     const double etheta = state[5];
 
     if (_params["DEBUGGING"] && (_params["DEBUG_LEVEL"] >= 2)){

@@ -1,6 +1,6 @@
 # Topics
-odom_topic: "/odometry/filtered_global"
-# odom_topic: "/control/odometry/filtered_global"
+# odom_topic: "/odometry/filtered_global"
+odom_topic: "/control/odometry/filtered_global"
 # path_planner_topic: "/move_base/TrajectoryPlannerROS/global_plan"
 path_planner_topic: "/move_base/GlobalPlanner/plan"
 goal_topic: "/move_base_simple/goal" 
@@ -17,7 +17,7 @@ inplace_rotate_vel: 0.3
 num_threads: 3
 # Parameters for control loop
 pub_twist_cmd: true
-debug_level: 3 # \in {0,1,2,3}
+debug_level: 0 # \in {0,1,2,3}
 delay_mode: true
 max_speed: 0.2 # unit: m/s 
 waypoints_dist: -1.0 # unit: m, set < 0 means computed by node

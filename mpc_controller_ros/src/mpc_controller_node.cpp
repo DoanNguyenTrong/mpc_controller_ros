@@ -250,7 +250,7 @@ MPCNode::MPCNode(ros::NodeHandle nh, ros::NodeHandle nh_priv):
     
     _mpc_params["DEBUG_LEVEL"]= debug_level_;
 
-    mpc_solver_.LoadParams(_mpc_params);
+    mpc_solver_ = MPC(_mpc_params);
 }
 
 

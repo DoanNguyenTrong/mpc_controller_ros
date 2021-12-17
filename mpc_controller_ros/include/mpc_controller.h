@@ -27,16 +27,16 @@ class MPC
 {
     public:
         MPC();
+        MPC(const std::map<string, double> &);
     
         // Solve the model given an initial state and polynomial coefficients.
         // Return the first actuatotions.
-        vector<double> Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs);
+        vector<double> Solve(Eigen::VectorXd , Eigen::VectorXd );
         vector<double> mpc_x;
         vector<double> mpc_y;
         
 
-        void LoadParams(const std::map<string, double> &params);
-    
+        
     private:
         // Parameters for mpc solver
         double          _max_angvel, 
@@ -55,10 +55,10 @@ class MPC
         
         std::map<string, double> _params;
         
-        int n_vars_;
-        int n_constraints_;
+        int             n_vars_;
+        int             n_constraints_;
 
-        vector<double> mpc_var_init_;
+        vector<double>  mpc_var_init_;
 
 };
 
