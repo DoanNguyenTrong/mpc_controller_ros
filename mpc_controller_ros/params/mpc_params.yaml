@@ -21,7 +21,7 @@ debug_level: 0 # \in {0,1,2,3}
 delay_mode: true
 max_speed: 0.2 # unit: m/s 
 waypoints_dist: -1.0 # unit: m, set < 0 means computed by node
-path_length: 8.0 # [m]
+path_length: 16.0 # [m]
 goal_tolerance: 0.3 # [m]
 controller_freq: 10
 
